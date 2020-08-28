@@ -136,7 +136,7 @@ public class MainGame : MonoBehaviour
         }
 
         if (isAllEmpty) ButtonEnable();
-        else Invoke("UnitSetting", 1);
+        else Invoke("UnitSetting", 0.5f);
     }
 
     void LateUpdate()
@@ -199,8 +199,8 @@ public class MainGame : MonoBehaviour
             CompanyTxtSetting(blueCompanyList[i]);
         }
 
-        Invoke("StartGame", 3);
-        Invoke("ButtonEnable", 3);
+        Invoke("StartGame", 0.5f);
+        Invoke("ButtonEnable", 0.5f);
     }
 
     void ButtonEnable()
