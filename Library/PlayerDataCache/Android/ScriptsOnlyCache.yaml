@@ -599,7 +599,7 @@ ScriptsOnlyBuild:
     className: ToggleGroup
   - hash:
       serializedVersion: 2
-      Hash: e92d9a1c62fe1d9f0df57d5d775ac107
+      Hash: 7d78fe8124ef0f6853fb9b61f06b0c3a
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: BattlUi

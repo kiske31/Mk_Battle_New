@@ -17,7 +17,8 @@ public class BattlUi : MonoBehaviour
     public MainGame mainGame;
 
     public GameObject troopSelectPanelObj;
-    public GameObject troopTypeSelectPanelObj;
+
+    public GameObject typeSelectPanelObj;
 
     public int selectButoon = 0;
 
@@ -35,20 +36,96 @@ public class BattlUi : MonoBehaviour
 
     public List<TroopSelect> blueTroopList;
 
+    float panelPosY = 156;
+
+    public void LoadPreset()
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            PlatoonMos mos = PlatoonMos.FOOTMAN;
+            int size = 1000;
+            bool isEmpty = true;
+
+            string ketStr = "mos_" + i;
+            if (PlayerPrefs.HasKey(ketStr))
+            {
+                int mosNum = PlayerPrefs.GetInt(ketStr);
+
+                Button button = mosButtonList[i];
+                Text btnTxt = button.GetComponentInChildren<Text>();
+
+                switch (mosNum)
+                {
+                    case 0:
+                        btnTxt.text = "Infantry";
+                        mos = PlatoonMos.FOOTMAN;
+                        break;
+                    case 1:
+                        btnTxt.text = "Spear man";
+                        mos = PlatoonMos.SPEARMAN;
+                        break;
+                    case 2:
+                        btnTxt.text = "Cavalry";
+                        mos = PlatoonMos.KNIGHT;
+                        break;
+                    case 3:
+                        btnTxt.text = "Bow man";
+                        mos = PlatoonMos.ARCHER;
+                        break;
+                }
+            }
+            else
+            {
+                PlayerPrefs.SetInt(ketStr, 0);
+            }
+
+            ketStr = "size_" + i;
+            if (PlayerPrefs.HasKey(ketStr))
+            {
+                size = PlayerPrefs.GetInt(ketStr);
+            }
+            else
+            {
+                PlayerPrefs.SetInt(ketStr, 1000);
+            }
+
+            ketStr = "empty_" + i;
+            if (PlayerPrefs.HasKey(ketStr))
+            {
+                isEmpty = bool.Parse(PlayerPrefs.GetString(ketStr));
+
+                if (isEmpty)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "EMPTY";
+                }
+            }
+            else
+            {
+                PlayerPrefs.SetString(ketStr, "true");
+            }
+
+            TroopSelect troop = new TroopSelect();
+            troop.platoonSize = size;
+            troop.mos = mos;
+            troop.isEmpty = isEmpty;
+            troopSelectDic.Add(i, troop);
+
+            // Ui 세팅
+            InputField textEdit = sizeInputList[i];
+            textEdit.text = size.ToString();
+
+            Slider slider = sizeSliderList[i];
+            slider.value = size;
+        }
+    }
+
     public void Awake()
     {
         troopSelectDic = new Dictionary<int, TroopSelect>();
 
-        for (int i = 0; i < 10; i++)
-        {
-            TroopSelect troop = new TroopSelect();
-            troop.platoonSize = 1000;
-            troop.mos = PlatoonMos.FOOTMAN;
-            troop.isEmpty = true;
-            troopSelectDic.Add(i, troop);
-            InputField textEdit = sizeInputList[i];
-            textEdit.text = "1000";
-        }
+        LoadPreset();
     }
 
     public void BattleUiInit()
@@ -131,7 +208,24 @@ public class BattlUi : MonoBehaviour
 
     public void SetTroopTypeButton(int num)
     {
-        troopTypeSelectPanelObj.SetActive(true);
+        float posX = -310;
+        float posY = 0;
+
+        if (num < 5)
+        {
+            posY = panelPosY - (num * 105);
+        }
+        else
+        {
+            posX = 330;
+            posY = panelPosY - ((num - 5) * 105);
+        }
+
+        RectTransform transform = typeSelectPanelObj.transform as RectTransform;
+
+        transform.anchoredPosition = new Vector3(posX, posY, transform.transform.position.z);
+
+        typeSelectPanelObj.SetActive(true);
 
         selectMos = 0;
              
@@ -167,12 +261,23 @@ public class BattlUi : MonoBehaviour
     {
         troopSelectPanelObj.SetActive(false);
 
+        for (int i = 0; i < 10; i++)
+        {
+            string ketStr = "mos_" + i;
+            PlayerPrefs.SetInt(ketStr, (int)troopSelectDic[i].mos);
+            ketStr = "size_" + i;
+            PlayerPrefs.SetInt(ketStr.ToString(), troopSelectDic[i].platoonSize);
+            ketStr = "empty_" + i;
+            PlayerPrefs.SetString(ketStr.ToString(), troopSelectDic[i].isEmpty.ToString());
+        }
+
         mainGame.GameStart(troopSelectDic);
     }
 
     public void SelectTypeComplete()
     {
-        troopTypeSelectPanelObj.SetActive(false);
+        typeSelectPanelObj.SetActive(false);
+
 
         Button button = mosButtonList[selectButoon];
 
