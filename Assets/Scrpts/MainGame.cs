@@ -68,16 +68,6 @@ public class MainGame : MonoBehaviour
 
     bool isTestBlockSpawn = false;
 
-    float timeCount_5; // 5틱
-    float timeCount_10; // 10틱
-    float timeCount_15; // 15틱
-
-    float seconds; // 초 단위 표기
-
-    float Tick_5;
-    float Tick_10;
-    float Tick_15;
-
     bool isGameStart;
 
     private const float TICK_TIMER_MAX = 1.0f / 60.0f;
@@ -90,15 +80,6 @@ public class MainGame : MonoBehaviour
         isGameStart = false;
 
         tick = 0;
-        seconds = 0;
-
-        timeCount_10 = 0;
-        timeCount_15 = 0;
-        timeCount_5 = 0;
-
-        Tick_15 = 1.0f / 15.0f;
-        Tick_10 = 1.0f / 10.0f;
-        Tick_5 = 1.0f / 15.0f;
 
         isDamgeReduce = true;
         dmgToggle.onValueChanged.AddListener((value) =>
@@ -479,7 +460,7 @@ public class MainGame : MonoBehaviour
         }
     }
 
-    // 해당하는 리스트의 소대가 전멸했는가? 체크
+    // 해당하는 리스트의 소대가 전멸했는가? 체크. 살아있다면 남은 병사수로 새로 공격력을 계산합니다.
     void CheckPlatoonDefeatInList(Company company)
     {
         int idx = 0;
@@ -498,13 +479,14 @@ public class MainGame : MonoBehaviour
                     if (company.companyCommander != null)
                     {
                         company.targetPlatoon = company.companyCommander.targetPlatoon;
+                        int companyNum = company.companyNum + 1;
                         if (company.companyCommander.isRed)
                         {
-                            company.companyCommander.companyText.text = company.companyNum + "★";
+                            company.companyCommander.companyText.text = companyNum + "★";
                         }
                         else
                         {
-                            company.companyCommander.companyText.text = "★" + company.companyNum;
+                            company.companyCommander.companyText.text = "★" + companyNum;
                         }
                     }
                 }
@@ -512,6 +494,7 @@ public class MainGame : MonoBehaviour
             }
             else
             {
+                list[idx].CalcAtk();
                 ++idx;
             }
         }
@@ -1073,11 +1056,6 @@ public class MainGame : MonoBehaviour
         isGameStart = false;
 
         tick = 0;
-        seconds = 0;
-
-        timeCount_10 = 0;
-        timeCount_15 = 0;
-        timeCount_5 = 0;
 
         restartButton.interactable = false;
 
@@ -1382,7 +1360,6 @@ public class MainGame : MonoBehaviour
         if (isGameStart)
         {
             tickTimer += Time.deltaTime;
-            seconds += Time.deltaTime;
 
             if (tickTimer >= TICK_TIMER_MAX)
             {
@@ -1395,11 +1372,6 @@ public class MainGame : MonoBehaviour
                 if (tick % 6 == 0) OnMoveRedTeam(MoveSpeed.TICK_10); // 1초에 10틱 이동
                 if (tick % 12 == 0) OnMoveRedTeam(MoveSpeed.TICK_5); // 1초에 5틱 이동
                 if (tick % 60 == 0) OnAttackRedTeam(); // 1초마다 공격합니다.
-            }
-
-            if (seconds >= 1)
-            {
-                seconds = 0;
             }
         }
     }

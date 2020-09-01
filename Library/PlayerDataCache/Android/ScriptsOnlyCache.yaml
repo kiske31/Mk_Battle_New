@@ -57,41 +57,41 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 11140}
     - Class: 114
-      Script: {instanceID: 11146}
+      Script: {instanceID: 11144}
     - Class: 114
-      Script: {instanceID: 11164}
+      Script: {instanceID: 11162}
     - Class: 114
-      Script: {instanceID: 11232}
+      Script: {instanceID: 11230}
     - Class: 114
-      Script: {instanceID: 11376}
+      Script: {instanceID: 11374}
     - Class: 114
-      Script: {instanceID: 11432}
+      Script: {instanceID: 11430}
     - Class: 114
-      Script: {instanceID: 11766}
+      Script: {instanceID: 11764}
     - Class: 114
-      Script: {instanceID: 12076}
+      Script: {instanceID: 12074}
     - Class: 114
-      Script: {instanceID: 12164}
+      Script: {instanceID: 12162}
     - Class: 114
-      Script: {instanceID: 12210}
+      Script: {instanceID: 12208}
     - Class: 114
-      Script: {instanceID: 12356}
+      Script: {instanceID: 12354}
     - Class: 114
-      Script: {instanceID: 12552}
+      Script: {instanceID: 12550}
     - Class: 114
-      Script: {instanceID: 12652}
+      Script: {instanceID: 12650}
     - Class: 114
-      Script: {instanceID: 12944}
+      Script: {instanceID: 12942}
     - Class: 114
-      Script: {instanceID: 13004}
+      Script: {instanceID: 13002}
     - Class: 114
-      Script: {instanceID: 13018}
+      Script: {instanceID: 13016}
     - Class: 114
-      Script: {instanceID: 13034}
+      Script: {instanceID: 13032}
     - Class: 114
-      Script: {instanceID: 13068}
+      Script: {instanceID: 13066}
     - Class: 114
-      Script: {instanceID: 13076}
+      Script: {instanceID: 13074}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/admin/Desktop/mkBattle2.apk
+  playerPath: C:/Users/admin/Desktop/mkBattle3.apk

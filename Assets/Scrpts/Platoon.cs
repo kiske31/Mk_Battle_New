@@ -1548,6 +1548,28 @@ public class Platoon : MonoBehaviour
         return targetTile;
     }
 
+    public void DamgeToPlatoon(float dmg, Platoon enemy)
+    {
+        hp -= dmg; // 소대의 체력을 깎고
+
+        if (targetPlatoon == null)
+        {
+            targetPlatoon = enemy;
+            platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+            if (this == companyCommander) // 본인 소대가 중대장이라면?
+            {
+                mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed); // 중대 목표를 초기화합니다.
+            }
+        }
+    }
+
+    public void CalcAtk()
+    {
+        float platoonNum = hp * 0.1f;
+
+        atk = mosAtk * platoonNum; // 줄어든 병사수만큼 소대 공격력을 감소 시킵니다.
+    }
+
     public void LateUpdate()
     {
         if (companyText != null)
@@ -1566,25 +1588,6 @@ public class Platoon : MonoBehaviour
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, mainGame.uiCamera, out localPos);
 
             companyText.transform.localPosition = localPos;
-        }
-    }
-
-    public void DamgeToPlatoon(float dmg, Platoon enemy)
-    {
-        hp -= dmg; // 소대의 체력을 깎고
-
-        float platoonNum = hp * 0.1f;
-
-        atk = mosAtk * platoonNum; // 줄어든 병사수만큼 소대 공격력을 감소 시킵니다.
-
-        if (targetPlatoon == null)
-        {
-            targetPlatoon = enemy;
-            platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
-            if (this == companyCommander) // 본인 소대가 중대장이라면?
-            {
-                mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed); // 중대 목표를 초기화합니다.
-            }
         }
     }
 }
