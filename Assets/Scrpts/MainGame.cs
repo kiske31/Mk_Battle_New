@@ -68,8 +68,38 @@ public class MainGame : MonoBehaviour
 
     bool isTestBlockSpawn = false;
 
+    float timeCount_5; // 5틱
+    float timeCount_10; // 10틱
+    float timeCount_15; // 15틱
+
+    float seconds; // 초 단위 표기
+
+    float Tick_5;
+    float Tick_10;
+    float Tick_15;
+
+    bool isGameStart;
+
+    private const float TICK_TIMER_MAX = 1.0f / 60.0f;
+
+    public int tick;
+    private float tickTimer;
+
     void Awake()
     {
+        isGameStart = false;
+
+        tick = 0;
+        seconds = 0;
+
+        timeCount_10 = 0;
+        timeCount_15 = 0;
+        timeCount_5 = 0;
+
+        Tick_15 = 1.0f / 15.0f;
+        Tick_10 = 1.0f / 10.0f;
+        Tick_5 = 1.0f / 15.0f;
+
         isDamgeReduce = true;
         dmgToggle.onValueChanged.AddListener((value) =>
         {
@@ -210,15 +240,15 @@ public class MainGame : MonoBehaviour
 
     void StartGame()
     {
-        OnStartTurn();
+        isGameStart = true;
     }
 
     // 턴 스타트
     void OnStartTurn()
     {
-        SetTurnCount(); // 턴 카운트를 하나 올리고 표기합니다
+        //SetTurnCount(); // 턴 카운트를 하나 올리고 표기합니다
 
-        OnUserInput();
+        //OnUserInput();
     }
 
      // 유저 입력 받는 페이즈
@@ -237,7 +267,7 @@ public class MainGame : MonoBehaviour
     void OnUseBlueMagic()
     {
         // OnMoveRedTeam();
-        OnSearchEnemyRedTem();
+        //OnSearchEnemyRedTem();
     }
 
     // 레드팀 색적 페이즈
@@ -249,34 +279,33 @@ public class MainGame : MonoBehaviour
     // 블루팀 색적 페이즈
     void OnSearchEnemyBlueTem()
     {
-        SearchEnemyInList(false, delegate { OnMoveRedTeam(); });
+        SearchEnemyInList(false, null);
     }
 
     // 레드팀 소대 이동 페이즈
-    void OnMoveRedTeam()
+    void OnMoveRedTeam(MoveSpeed speed)
     {
         if (companyIdx < redCompanyList.Count)
         {
-            MovePlatoonInList(redCompanyList[companyIdx].platoonList, delegate { platoonIdx = 0; companyIdx++; OnMoveRedTeam(); });
+            MovePlatoonInList(redCompanyList[companyIdx].platoonList, speed, delegate { platoonIdx = 0; companyIdx++; OnMoveRedTeam(speed); });
         }
         else
         {
             companyIdx = 0;
-            OnMoveBlueTeam();
+            OnMoveBlueTeam(speed);
         }
     }
 
     // 블루팀 소대 이동 페이즈
-    void OnMoveBlueTeam()
+    void OnMoveBlueTeam(MoveSpeed speed)
     {
         if (companyIdx < blueCompanyList.Count)
         {
-            MovePlatoonInList(blueCompanyList[companyIdx].platoonList, delegate { platoonIdx = 0; companyIdx++; OnMoveBlueTeam(); });
+            MovePlatoonInList(blueCompanyList[companyIdx].platoonList, speed, delegate { platoonIdx = 0; companyIdx++; OnMoveBlueTeam(speed); });
         }
         else
         {
             companyIdx = 0;
-            OnAttackRedTeam();
         }
     }
 
@@ -327,7 +356,7 @@ public class MainGame : MonoBehaviour
     // 턴 종료 (게임이 끝나지 않았다면 다음 턴으로 루틴 반복)
     void OnTurnEnd()
     {
-        OnStartTurn();
+        SetTurnCount();
     }
 
 
@@ -413,23 +442,25 @@ public class MainGame : MonoBehaviour
     }
 
     // 해당하는 리스트의 소대를 이동시킴
-    void MovePlatoonInList(List<Platoon> list, Action action)
+    void MovePlatoonInList(List<Platoon> list, MoveSpeed speed, Action action)
     {
         if (platoonIdx < list.Count)
         {
-            if (turnCount % list[platoonIdx].speed == 0 && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
+            if (list[platoonIdx].moveSpeed == speed && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
             {
-                list[platoonIdx].Move(delegate { MovePlatoonInList(list, action); });
+                list[platoonIdx].Move(delegate { MovePlatoonInList(list, speed, action); });
             }
             else
             {
                 platoonIdx++;
-                MovePlatoonInList(list, action);
+                MovePlatoonInList(list, speed, action);
             }
         }
         else
         {
-            StartCoroutine(WaitTick(delegate { platoonIdx = 0; action(); }));
+            platoonIdx = 0; 
+            action();
+            //StartCoroutine(delegate { platoonIdx = 0; action(); });
         }
     }
 
@@ -442,7 +473,9 @@ public class MainGame : MonoBehaviour
         }
         else
         {
-            StartCoroutine(WaitTick(delegate { platoonIdx = 0; action(); }));
+            platoonIdx = 0; 
+            action();
+            //StartCoroutine(WaitTick(delegate { platoonIdx = 0; action(); }));
         }
     }
 
@@ -1037,6 +1070,15 @@ public class MainGame : MonoBehaviour
 
     public void RestartGame()
     {
+        isGameStart = false;
+
+        tick = 0;
+        seconds = 0;
+
+        timeCount_10 = 0;
+        timeCount_15 = 0;
+        timeCount_5 = 0;
+
         restartButton.interactable = false;
 
         waitCallback = null;
@@ -1087,6 +1129,7 @@ public class MainGame : MonoBehaviour
         }
 
         turnCount = 0;
+        turnText.text = "Turn : " + turnCount;
 
         BattlUi ui = uiCanvas.GetComponent<BattlUi>();
 
@@ -1331,6 +1374,34 @@ public class MainGame : MonoBehaviour
         obj.transform.SetParent(transform);
         Tile tile = tileArray[X, Y];
         obj.transform.position = new Vector3(tile.posX, tile.posY, 0);
+    }
+
+    // Tick 카운트를 올리고 부대 색적, 이동, 공격을 진행합니다.
+    void Update()
+    {
+        if (isGameStart)
+        {
+            tickTimer += Time.deltaTime;
+            seconds += Time.deltaTime;
+
+            if (tickTimer >= TICK_TIMER_MAX)
+            {
+                tickTimer -= TICK_TIMER_MAX;
+                tick++;
+
+                OnSearchEnemyRedTem(); // 적 타겟은 매 틱 찾습니다.
+
+                if (tick % 4 == 0) OnMoveRedTeam(MoveSpeed.TICK_15); // 1초에 15틱 이동
+                if (tick % 6 == 0) OnMoveRedTeam(MoveSpeed.TICK_10); // 1초에 10틱 이동
+                if (tick % 12 == 0) OnMoveRedTeam(MoveSpeed.TICK_5); // 1초에 5틱 이동
+                if (tick % 60 == 0) OnAttackRedTeam(); // 1초마다 공격합니다.
+            }
+
+            if (seconds >= 1)
+            {
+                seconds = 0;
+            }
+        }
     }
 }
 

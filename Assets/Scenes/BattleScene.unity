@@ -623,6 +623,7 @@ MonoBehaviour:
   restartButton: {fileID: 128907949}
   dmgToggle: {fileID: 676149571}
   isDamgeReduce: 0
+  tick: 0
 --- !u!4 &105666669
 Transform:
   m_ObjectHideFlags: 0

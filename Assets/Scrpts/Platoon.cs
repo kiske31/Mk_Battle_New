@@ -40,6 +40,13 @@ public enum PlatoonMos
     DOWN_KNIGHT, // 아랫쪽 열에 배치된 기사 (기사 병종만 특별 이동 루틴을 사용하므로 따로 처리)
 }
 
+public enum MoveSpeed
+{ 
+    TICK_5,
+    TICK_10,
+    TICK_15
+}
+
 // 소대 이동 방향 (8방향)
 public enum MoveDirection
 {
@@ -64,7 +71,7 @@ public struct FindingDir
 
 public class Platoon : MonoBehaviour
 {
-    public const int BALANCE_DMG = 50;
+    public const int BALANCE_DMG = 5;
 
     public GameObject parentObj; // 하이어라키에서 소대들이 중대로 묶일 빈 오브젝트
     public List<Unit> unitList; // 소대의 유닛 리스트
@@ -120,6 +127,8 @@ public class Platoon : MonoBehaviour
 
     public Dictionary<Tile, int> closeTileDic; // 패스 파인딩을 더 효과적으로 하기 위해서 지나간 길을 담아둘 딕셔너리 (지나갔던 타일, 지나쳤던 턴)
 
+    public MoveSpeed moveSpeed;
+
     // 소대 이닛 (메인게임, 병종, 소대의 크기, 시작 타일, 소대번호, 레드팀인가?)
     public void PlatoonInit(MainGame mainGame, PlatoonMos PlatoonMos, PlatoonSize num, int armyNum , Tile startTile, int platoonNum, int companyNum, bool isRed= true)
     {
@@ -149,22 +158,26 @@ public class Platoon : MonoBehaviour
             case PlatoonMos.FOOTMAN:
                 prefabName = "Red";
                 speed = 2;
+                this.moveSpeed = MoveSpeed.TICK_10;
                 break;
             case PlatoonMos.ARCHER:
                 prefabName = "Green";
                 speed = 2;
                 tempHp = 7;
                 range = 40; // 궁병은 사거리가 김
+                this.moveSpeed = MoveSpeed.TICK_10;
                 break;
             case PlatoonMos.SPEARMAN:
                 prefabName = "Yellow";
                 speed = 4;
+                this.moveSpeed = MoveSpeed.TICK_5;
                 break;
             case PlatoonMos.DOWN_KNIGHT:
             case PlatoonMos.UP_KNIGHT:
             case PlatoonMos.KNIGHT:
                 prefabName = "Blue";
                 speed = 1;
+                this.moveSpeed = MoveSpeed.TICK_15;
                 break;
         }
 
@@ -605,7 +618,7 @@ public class Platoon : MonoBehaviour
         // 180 ~ -180 degree
         float angle = Mathf.Atan2(target.y, target.x) * Mathf.Rad2Deg;
 
-        Debug.Log("소대와 타겟의 앵글 : " + angle);
+        // Debug.Log("소대와 타겟의 앵글 : " + angle);
 
         if ((0 <= angle && angle < 22.5f) || (-0.1f >= angle && angle > -22.5f))
         {
@@ -899,11 +912,11 @@ public class Platoon : MonoBehaviour
                 {
                     if (closeTileDic.ContainsKey(moveTile))
                     {
-                        closeTileDic[moveTile] = mainGame.turnCount;
+                        closeTileDic[moveTile] = mainGame.tick;
                     }
                     else
                     {
-                        closeTileDic.Add(moveTile, mainGame.turnCount);
+                        closeTileDic.Add(moveTile, mainGame.tick);
                     }
                 }
 
@@ -917,6 +930,37 @@ public class Platoon : MonoBehaviour
         else platoonStatus = PlatoonStatus.UNIT_IDLE;
 
         mainGame.platoonIdx++;
+
+        Unit target = null;
+        if (platoonMos == PlatoonMos.ARCHER) // 궁병이라면?
+        {
+            target = CheckEnemyInRange();
+        }
+        else target = CheckEnemyTile(); // 주변에 적이 있는지 검사
+
+        if (target == null) // 적이 없다면 상태 IDLE
+        {
+            if (this != companyCommander) targetPlatoon = mainGame.GetCompanyTarget(companyNum, isRed);
+
+            if (targetPlatoon != null)
+            {
+                platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+            }
+            else
+            {
+                platoonStatus = PlatoonStatus.UNIT_IDLE;
+            }
+        }
+        else // 적이 존재한다면 공격 준비
+        {
+            platoonStatus = PlatoonStatus.UNIT_ATTACK;
+            targetPlatoon = target.platoon;
+
+            if (this == companyCommander) // 중대장 소대였다면 중대 타겟으로 설정
+            {
+                mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed);
+            }
+        }
 
         if (moveCallback != null)
         {
@@ -947,7 +991,7 @@ public class Platoon : MonoBehaviour
             // if ((MoveDirection)directionNum != platoonBackDirection && closeTileDic.ContainsKey(tile))
             if (closeTileDic.ContainsKey(tile))
             {
-                if (mainGame.turnCount - closeTileDic[tile] < 20) continue;
+                if (mainGame.tick - closeTileDic[tile] < 20) continue;
             }
             
             Tile targetTile = mainGame.GetTileByIdx(PlatoonTargetIdxX, PlatoonTargetIdxY);
@@ -970,7 +1014,7 @@ public class Platoon : MonoBehaviour
             {
                 if (!closeTileDic.ContainsKey(list[i].tile))
                 {
-                    closeTileDic.Add(list[i].tile, mainGame.turnCount);
+                    closeTileDic.Add(list[i].tile, mainGame.tick);
                 } 
             }
         }
