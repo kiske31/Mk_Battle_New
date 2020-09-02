@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-//using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -23,16 +22,6 @@ public enum UnitPos
     POS_UNKNOW // 아직 위치가 정해지지 않음
 }
 
-// 부대 배열이 몇개인가? 최대 5줄, 최소 1줄
-public enum UnitLine
-{ 
-    ONE_LINE = 0,
-    TWO_LINE,
-    THREE_LINE,
-    FOUR_LINE,
-    FIVE_LINE
-}
-
 public class Unit : MonoBehaviour
 {
     public MainGame mainGame;
@@ -50,12 +39,6 @@ public class Unit : MonoBehaviour
     public bool isRed; // 레드팀인가? 
 
     public int platoonNum; // 소대 번호
-
-    // public float defaultAtk; // 초기 공격력
-    // public float defaultHP; // 초기 체력
-
-    // public float atk; // 소대 공격력   
-    // public float hp; // 소대 체력
 
     public Platoon platoon; // 소속 소대
 

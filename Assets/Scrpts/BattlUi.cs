@@ -36,6 +36,9 @@ public class BattlUi : MonoBehaviour
 
     public List<TroopSelect> blueTroopList;
 
+    public Text redTotalNum;
+    public Text blueTotalNum;
+
     float panelPosY = 156;
 
     public void LoadPreset()
@@ -65,12 +68,12 @@ public class BattlUi : MonoBehaviour
                         mos = PlatoonMos.SPEARMAN;
                         break;
                     case 2:
-                        btnTxt.text = "Cavalry";
-                        mos = PlatoonMos.KNIGHT;
-                        break;
-                    case 3:
                         btnTxt.text = "Bow man";
                         mos = PlatoonMos.ARCHER;
+                        break;
+                    case 3:
+                        btnTxt.text = "Cavalry";
+                        mos = PlatoonMos.KNIGHT;
                         break;
                 }
             }
@@ -119,6 +122,8 @@ public class BattlUi : MonoBehaviour
             Slider slider = sizeSliderList[i];
             slider.value = size;
         }
+
+        UpdateTotalNum();
     }
 
     public void Awake()
@@ -188,6 +193,8 @@ public class BattlUi : MonoBehaviour
                 troopSelectDic[num] = SetTroopData(troopSelectDic[num], troopSelectDic[num].mos, sizeNum, troopSelectDic[num].isEmpty);
             }
         }
+
+        UpdateTotalNum();
     }
 
     public void SetTroppSizeSlide(int num)
@@ -204,6 +211,8 @@ public class BattlUi : MonoBehaviour
         {
             troopSelectDic[num] = SetTroopData(troopSelectDic[num], troopSelectDic[num].mos, size, troopSelectDic[num].isEmpty);
         }
+
+        UpdateTotalNum();
     }
 
     public void SetTroopTypeButton(int num)
@@ -302,12 +311,12 @@ public class BattlUi : MonoBehaviour
                 mos = PlatoonMos.SPEARMAN;
                 break;
             case 3:
-                btnTxt.text = "Cavalry";
-                mos = PlatoonMos.KNIGHT;
-                break;
-            case 4:
                 btnTxt.text = "Bow man";
                 mos = PlatoonMos.ARCHER;
+                break;
+            case 4:
+                btnTxt.text = "Cavalry";
+                mos = PlatoonMos.KNIGHT;
                 break;
         }
 
@@ -315,6 +324,8 @@ public class BattlUi : MonoBehaviour
         {
             troopSelectDic[selectButoon] = SetTroopData(troopSelectDic[selectButoon], mos, troopSelectDic[selectButoon].platoonSize, empty);
         }
+
+        UpdateTotalNum();
     }
 
     public TroopSelect SetTroopData(TroopSelect select, PlatoonMos mos, int size, bool empty)
@@ -324,5 +335,25 @@ public class BattlUi : MonoBehaviour
         temp.platoonSize = size;
         temp.isEmpty = empty;
         return temp;
+    }
+
+    public void UpdateTotalNum()
+    {
+        int redTotalSize = 0;
+        int blueTotalSize = 0;
+
+        for (int i = 0; i < 10; i++)
+        {
+            if (troopSelectDic.ContainsKey(i))
+            {
+                if (troopSelectDic[i].isEmpty) continue;
+
+                if (i < 5) redTotalSize += troopSelectDic[i].platoonSize;
+                else blueTotalSize += troopSelectDic[i].platoonSize;
+            }
+        }
+
+        redTotalNum.text = "총 병사수 : " + redTotalSize;
+        blueTotalNum.text = "총 병사수 : " + blueTotalSize;
     }
 }

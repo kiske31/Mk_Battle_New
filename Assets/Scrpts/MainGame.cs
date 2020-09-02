@@ -34,9 +34,9 @@ public class MainGame : MonoBehaviour
 
     public Canvas uiCanvas; // UI 캔버스
 
-    public Camera mainCamera;
+    public Camera mainCamera; // 메인 카메라
 
-    public Camera uiCamera;
+    public Camera uiCamera; // 유아이용 카메라
     
     public int platoonIdx = 0; // 소대 관련 루틴을 작동시키는 인덱스
     public int companyIdx = 0; // 중대 관련 루틴을 작동시키는 인덱스
@@ -264,7 +264,7 @@ public class MainGame : MonoBehaviour
     }
 
     // 레드팀 소대 이동 페이즈
-    void OnMoveRedTeam(MoveSpeed speed)
+    void OnMoveRedTeam(PlatoonMoveSpeed speed)
     {
         if (companyIdx < redCompanyList.Count)
         {
@@ -278,7 +278,7 @@ public class MainGame : MonoBehaviour
     }
 
     // 블루팀 소대 이동 페이즈
-    void OnMoveBlueTeam(MoveSpeed speed)
+    void OnMoveBlueTeam(PlatoonMoveSpeed speed)
     {
         if (companyIdx < blueCompanyList.Count)
         {
@@ -295,6 +295,7 @@ public class MainGame : MonoBehaviour
     {
         if (companyIdx < redCompanyList.Count)
         {
+            // Debug.Log("OnAttackRedTeam()");
             AttackPlatoonInList(redCompanyList[companyIdx].platoonList, delegate { platoonIdx = 0; companyIdx++; OnAttackRedTeam(); });
         }
         else
@@ -309,6 +310,7 @@ public class MainGame : MonoBehaviour
     {
         if (companyIdx < blueCompanyList.Count)
         {
+            // Debug.Log("OnAttackBlueTeam()");
             AttackPlatoonInList(blueCompanyList[companyIdx].platoonList, delegate { platoonIdx = 0; companyIdx++; OnAttackBlueTeam(); });
         }
         else
@@ -388,24 +390,27 @@ public class MainGame : MonoBehaviour
 
             for (int j = 0; j < enemyCompanyList.Count; j++)
             {
-                if (enemyCompanyList[j].companyCommander == null) continue;
+                List<Platoon> enemyPlatoonList = enemyCompanyList[j].platoonList;
 
-                Unit enemyCommander = enemyCompanyList[j].companyCommander.platoonCommander;
+                for (int k = 0; k < enemyPlatoonList.Count; k++)
+                {
+                    if (enemyPlatoonList[k].hp <= 0) continue;
 
-                if (enemyCompanyList[j].companyCommander.hp <= 0) continue;
+                    Unit enemyCommander = enemyPlatoonList[k].platoonCommander;
 
-                if (isRed && enemyCommander.tileIdxX > friendlyCommander.tileIdxX + searchX) continue; // 레드팀일 때 색적 범위 밖이라면 팅겨냄
-                else if (!isRed && enemyCommander.tileIdxX < friendlyCommander.tileIdxX - searchX) continue; // 블루팀일 때 색적 범위 밖이라면 팅겨냄
+                    if (isRed && enemyCommander.tileIdxX > friendlyCommander.tileIdxX + searchX) continue; // 레드팀일 때 색적 범위 밖이라면 팅겨냄
+                    else if (!isRed && enemyCommander.tileIdxX < friendlyCommander.tileIdxX - searchX) continue; // 블루팀일 때 색적 범위 밖이라면 팅겨냄
 
-                Tile currentTile = GetTileByIdx(friendlyCommander.tileIdxX, friendlyCommander.tileIdxY); // 현재 아군 위치 타일
-                Tile targetTile = GetTileByIdx(enemyCommander.tileIdxX, enemyCommander.tileIdxY); // 적군 위치 타일
+                    Tile currentTile = GetTileByIdx(friendlyCommander.tileIdxX, friendlyCommander.tileIdxY); // 현재 아군 위치 타일
+                    Tile targetTile = GetTileByIdx(enemyCommander.tileIdxX, enemyCommander.tileIdxY); // 적군 위치 타일
 
-                float distance = Vector3.Distance(new Vector3(targetTile.posX, targetTile.posY, 0), new Vector3(currentTile.posX, currentTile.posY, 0));
+                    float distance = Vector3.Distance(new Vector3(targetTile.posX, targetTile.posY, 0), new Vector3(currentTile.posX, currentTile.posY, 0));
 
-                SearchPlatoon search = new SearchPlatoon();
-                search.H = distance;
-                search.platoon = enemyCompanyList[j].companyCommander;
-                searchList.Add(search);
+                    SearchPlatoon search = new SearchPlatoon();
+                    search.H = distance;
+                    search.platoon = enemyPlatoonList[k];
+                    searchList.Add(search);
+                }
             }
 
             if (searchList.Count > 0)
@@ -423,11 +428,11 @@ public class MainGame : MonoBehaviour
     }
 
     // 해당하는 리스트의 소대를 이동시킴
-    void MovePlatoonInList(List<Platoon> list, MoveSpeed speed, Action action)
+    void MovePlatoonInList(List<Platoon> list, PlatoonMoveSpeed speed, Action action)
     {
         if (platoonIdx < list.Count)
         {
-            if (list[platoonIdx].moveSpeed == speed && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
+            if (list[platoonIdx].PlatoonMoveSpeed == speed && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
             {
                 list[platoonIdx].Move(delegate { MovePlatoonInList(list, speed, action); });
             }
@@ -1368,9 +1373,9 @@ public class MainGame : MonoBehaviour
 
                 OnSearchEnemyRedTem(); // 적 타겟은 매 틱 찾습니다.
 
-                if (tick % 4 == 0) OnMoveRedTeam(MoveSpeed.TICK_15); // 1초에 15틱 이동
-                if (tick % 6 == 0) OnMoveRedTeam(MoveSpeed.TICK_10); // 1초에 10틱 이동
-                if (tick % 12 == 0) OnMoveRedTeam(MoveSpeed.TICK_5); // 1초에 5틱 이동
+                if (tick % 4 == 0) OnMoveRedTeam(PlatoonMoveSpeed.TICK_15); // 1초에 15틱 이동
+                if (tick % 6 == 0) OnMoveRedTeam(PlatoonMoveSpeed.TICK_10); // 1초에 10틱 이동
+                if (tick % 12 == 0) OnMoveRedTeam(PlatoonMoveSpeed.TICK_5); // 1초에 5틱 이동
                 if (tick % 60 == 0) OnAttackRedTeam(); // 1초마다 공격합니다.
             }
         }
