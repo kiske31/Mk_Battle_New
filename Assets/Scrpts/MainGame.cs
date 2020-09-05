@@ -401,10 +401,10 @@ public class MainGame : MonoBehaviour
                     if (isRed && enemyCommander.tileIdxX > friendlyCommander.tileIdxX + searchX) continue; // 레드팀일 때 색적 범위 밖이라면 팅겨냄
                     else if (!isRed && enemyCommander.tileIdxX < friendlyCommander.tileIdxX - searchX) continue; // 블루팀일 때 색적 범위 밖이라면 팅겨냄
 
-                    Tile currentTile = GetTileByIdx(friendlyCommander.tileIdxX, friendlyCommander.tileIdxY); // 현재 아군 위치 타일
-                    Tile targetTile = GetTileByIdx(enemyCommander.tileIdxX, enemyCommander.tileIdxY); // 적군 위치 타일
+                    // Tile currentTile = GetTileByIdx(friendlyCommander.tileIdxX, friendlyCommander.tileIdxY); // 현재 아군 위치 타일
+                    // Tile targetTile = GetTileByIdx(enemyCommander.tileIdxX, enemyCommander.tileIdxY); // 적군 위치 타일
 
-                    float distance = Vector3.Distance(new Vector3(targetTile.posX, targetTile.posY, 0), new Vector3(currentTile.posX, currentTile.posY, 0));
+                    float distance = Vector3.Distance(new Vector3(enemyCommander.tileIdxX, enemyCommander.tileIdxY, 0), new Vector3(friendlyCommander.tileIdxX, friendlyCommander.tileIdxY, 0));
 
                     SearchPlatoon search = new SearchPlatoon();
                     search.H = distance;
@@ -514,9 +514,9 @@ public class MainGame : MonoBehaviour
         {
             if (list[i].hp > 0)
             {
-                Tile targetTile = GetTileByIdx(list[i].platoonCommander.tileIdxX, list[i].platoonCommander.tileIdxY); // 적군 위치 타일
+                // Tile targetTile = GetTileByIdx(list[i].platoonCommander.tileIdxX, list[i].platoonCommander.tileIdxY); // 적군 위치 타일
 
-                float distance = Vector3.Distance(new Vector3(targetTile.posX, targetTile.posY, 0), new Vector3(currentTile.posX, currentTile.posY, 0));
+                float distance = Vector3.Distance(new Vector3(list[i].platoonCommander.tileIdxX, list[i].platoonCommander.tileIdxY, 0), new Vector3(currentTile.idxX, currentTile.idxY, 0));
 
                 SearchPlatoon search = new SearchPlatoon();
                 search.H = distance;
@@ -553,8 +553,8 @@ public class MainGame : MonoBehaviour
         List<Platoon> list = new List<Platoon>();
         Platoon commander = null;
 
-        int plusY = 0;
-        int plusX = 0;
+        int offsetY = 0;
+        int offsetX = 0;
 
         PlatoonSize changeSize = PlatoonSize.THOUSAND; // 변경되어야할 사이즈
         PlatoonSize originalSize = PlatoonSize.THOUSAND; // 유지되어야할 사이즈
@@ -564,8 +564,8 @@ public class MainGame : MonoBehaviour
 
         int changeArmyNum = 0; // 바뀐 사이즈의 소대 병사 수
         int originalArmyNum = 0; // 변경되지 않은 사이즈의 소대 병사 수
-        int commanderPlusArmy = 0; // 중대장 소대 추가 병사 수
-        int plusArmy = 0; // 일반 소대 추가 병사 수
+        int commanderOffestArmy = 0; // 중대장 소대 추가 병사 수
+        int offestArmy = 0; // 일반 소대 추가 병사 수
         int minimumArmy = 0; // 5천 이하 소대일 때 천명 이하의 병사를 갖는 소대 병사 수
 
         int armyValue = armyNum;
@@ -588,8 +588,8 @@ public class MainGame : MonoBehaviour
             originalArmyNum = 1000;
 
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 25000)
         {
@@ -602,8 +602,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 30000)
         {
@@ -614,8 +614,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 35000)
         {
@@ -629,8 +629,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 40000)
         {
@@ -644,8 +644,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 45000)
         {
@@ -659,8 +659,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else if (armyNum < 50000)
         {
@@ -674,8 +674,8 @@ public class MainGame : MonoBehaviour
 
             armyValue -= changeSizeCount * changeArmyNum;
             armyValue -= (originalSizeCount - changeSizeCount) * originalArmyNum;
-            plusArmy = armyValue / 5;
-            commanderPlusArmy = plusArmy + (armyValue % 5);
+            offestArmy = armyValue / 5;
+            commanderOffestArmy = offestArmy + (armyValue % 5);
         }
         else
         {
@@ -728,17 +728,17 @@ public class MainGame : MonoBehaviour
                 }
 
                 PlatoonSize size = originalSize;
-                int PlatoonArmyNum = originalArmyNum + plusArmy;
+                int PlatoonArmyNum = originalArmyNum + offestArmy;
 
                 if (isChangeSize)
                 {
                     size = changeSize;
-                    PlatoonArmyNum = changeArmyNum + plusArmy;
+                    PlatoonArmyNum = changeArmyNum + offestArmy;
                 }
 
                 if (isCompanyLeader)
                 {
-                    PlatoonArmyNum = changeArmyNum + commanderPlusArmy;
+                    PlatoonArmyNum = changeArmyNum + commanderOffestArmy;
                 }
 
                 GameObject obj = PoolsManager.Spawn("Platoon", Vector3.zero, Quaternion.identity);
@@ -748,29 +748,29 @@ public class MainGame : MonoBehaviour
                 // 천명과 오천명의 병력 규모는 Y인덱스를 1칸 띄어줘야 와꾸가 삽니다.
                 if (size == PlatoonSize.THOUSAND)
                 {
-                    plusY = 1;
+                    offsetY = 1;
                 }
                 else if (size == PlatoonSize.FIVE_THOUSAND)
                 {
-                    if (isRed) plusY = 0;
-                    else plusY = 1;
+                    if (isRed) offsetY = 0;
+                    else offsetY = 1;
                 }
-                else plusY = 0;
+                else offsetY = 0;
 
                 if (isRed) // 레드팀이라면 천명과 오천명의 병력 규모 X인덱스를 전방 배치
                 {
                     if (size == PlatoonSize.THOUSAND)
                     {
-                        plusX = 2;
+                        offsetX = 2;
                     }
                     else if (size == PlatoonSize.FIVE_THOUSAND)
                     {
-                        plusX = 1;
+                        offsetX = 1;
                     }
-                    else plusX = 0;
+                    else offsetX = 0;
                 }
 
-                platoon.PlatoonInit(this, mos, size, PlatoonArmyNum, tileArray[startTile.idxX + plusX, startTile.idxY + (i * 5) + plusY], i, companyNum, isRed);
+                platoon.PlatoonInit(this, mos, size, PlatoonArmyNum, tileArray[startTile.idxX + offsetX, startTile.idxY + (i * 5) + offsetY], i, companyNum, isRed);
 
                 if (isCompanyLeader)
                 {
@@ -842,36 +842,36 @@ public class MainGame : MonoBehaviour
                 Platoon platoon = obj.GetComponent<Platoon>();
                 platoon.parentObj = company;
 
-                int PlatoonArmyNum = originalArmyNum + plusArmy;
+                int PlatoonArmyNum = originalArmyNum + offestArmy;
 
                 if (i == originalSizeCount - 1 && minimumArmy != 0) PlatoonArmyNum = minimumArmy; // 1000명 이하인 소대가 발생했다면?
 
                 // 천명과 오천명의 병력 규모는 Y인덱스를 1칸 띄어줘야 와꾸가 삽니다.
                 if (originalSize == PlatoonSize.THOUSAND)
                 {
-                    plusY = 1; 
+                    offsetY = 1; 
                 }
                 else if (originalSize == PlatoonSize.FIVE_THOUSAND)
                 {
-                    if (isRed) plusY = 0;
-                    else plusY = 1;
+                    if (isRed) offsetY = 0;
+                    else offsetY = 1;
                 }
-                else plusY = 0;
+                else offsetY = 0;
 
                 if (isRed) // 레드팀이라면 천명과 오천명의 병력 규모 X인덱스를 전방 배치
                 {
                     if (originalSize == PlatoonSize.THOUSAND)
                     {
-                        plusX = 2;
+                        offsetX = 2;
                     }
                     else if (originalSize == PlatoonSize.FIVE_THOUSAND)
                     {
-                        plusX = 1;
+                        offsetX = 1;
                     }
-                    else plusX = 0;
+                    else offsetX = 0;
                 }
 
-                platoon.PlatoonInit(this, mos, originalSize, PlatoonArmyNum, tileArray[startTile.idxX + plusX, startTile.idxY + (idx * 5) + plusY], i, companyNum, isRed);
+                platoon.PlatoonInit(this, mos, originalSize, PlatoonArmyNum, tileArray[startTile.idxX + offsetX, startTile.idxY + (idx * 5) + offsetY], i, companyNum, isRed);
                 idx++;
 
                 // 중대 지휘관 소대 결정

@@ -149,7 +149,7 @@ ScriptsOnlyBuild:
     className: TMP_Dropdown
   - hash:
       serializedVersion: 2
-      Hash: ad4592de7eb00948f299b22d8824a48e
+      Hash: 8241fb3f44d76ab98ec8352780d8e853
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: Platoon
@@ -599,7 +599,7 @@ ScriptsOnlyBuild:
     className: ToggleGroup
   - hash:
       serializedVersion: 2
-      Hash: 7d78fe8124ef0f6853fb9b61f06b0c3a
+      Hash: 2fcd515058f72cf4317f214f9fcbc497
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: BattlUi
@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/admin/Desktop/mkBattle3.apk
+  playerPath: C:/Users/kiske/Desktop/test.apk
