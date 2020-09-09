@@ -149,7 +149,7 @@ ScriptsOnlyBuild:
     className: TMP_Dropdown
   - hash:
       serializedVersion: 2
-      Hash: 8241fb3f44d76ab98ec8352780d8e853
+      Hash: eb55e0554d1fbc78895c452aaf58b71b
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: Platoon
@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/kiske/Desktop/test.apk
+  playerPath: C:/Users/admin/Desktop/test.apk
