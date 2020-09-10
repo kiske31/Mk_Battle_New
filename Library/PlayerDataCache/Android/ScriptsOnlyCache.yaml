@@ -55,43 +55,43 @@ ScriptsOnlyBuild:
     - Class: 108
       Script: {instanceID: 0}
     - Class: 114
-      Script: {instanceID: 11140}
+      Script: {instanceID: 11248}
     - Class: 114
-      Script: {instanceID: 11144}
+      Script: {instanceID: 11266}
     - Class: 114
-      Script: {instanceID: 11162}
+      Script: {instanceID: 11334}
     - Class: 114
-      Script: {instanceID: 11230}
+      Script: {instanceID: 11438}
     - Class: 114
-      Script: {instanceID: 11374}
+      Script: {instanceID: 11478}
     - Class: 114
-      Script: {instanceID: 11430}
+      Script: {instanceID: 11534}
     - Class: 114
-      Script: {instanceID: 11764}
+      Script: {instanceID: 11868}
     - Class: 114
-      Script: {instanceID: 12074}
+      Script: {instanceID: 12176}
     - Class: 114
-      Script: {instanceID: 12162}
+      Script: {instanceID: 12264}
     - Class: 114
-      Script: {instanceID: 12208}
+      Script: {instanceID: 12310}
     - Class: 114
-      Script: {instanceID: 12354}
-    - Class: 114
-      Script: {instanceID: 12550}
+      Script: {instanceID: 12456}
     - Class: 114
       Script: {instanceID: 12650}
     - Class: 114
-      Script: {instanceID: 12942}
+      Script: {instanceID: 12750}
     - Class: 114
-      Script: {instanceID: 13002}
+      Script: {instanceID: 13042}
     - Class: 114
-      Script: {instanceID: 13016}
+      Script: {instanceID: 13102}
     - Class: 114
-      Script: {instanceID: 13032}
+      Script: {instanceID: 13116}
     - Class: 114
-      Script: {instanceID: 13066}
+      Script: {instanceID: 13132}
     - Class: 114
-      Script: {instanceID: 13074}
+      Script: {instanceID: 13166}
+    - Class: 114
+      Script: {instanceID: 13174}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -111,12 +111,6 @@ ScriptsOnlyBuild:
     - Class: 224
       Script: {instanceID: 0}
   scriptHashData:
-  - hash:
-      serializedVersion: 2
-      Hash: aeb62f729c52c814dec86c47dcac1471
-    assemblyName: UnityEngine.UI.dll
-    namespaceName: UnityEngine.UI
-    className: Text
   - hash:
       serializedVersion: 2
       Hash: 75bfe41cb22a3a90bef0c3085cf4bd00
@@ -149,7 +143,7 @@ ScriptsOnlyBuild:
     className: TMP_Dropdown
   - hash:
       serializedVersion: 2
-      Hash: eb55e0554d1fbc78895c452aaf58b71b
+      Hash: c0455553f96d49d59b6d552c2a8f5d74
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: Platoon
@@ -177,6 +171,12 @@ ScriptsOnlyBuild:
     assemblyName: Unity.Timeline.dll
     namespaceName: UnityEngine.Timeline
     className: ActivationTrack
+  - hash:
+      serializedVersion: 2
+      Hash: aeb62f729c52c814dec86c47dcac1471
+    assemblyName: UnityEngine.UI.dll
+    namespaceName: UnityEngine.UI
+    className: Text
   - hash:
       serializedVersion: 2
       Hash: 499fd23433e68e265d153aa6b95d0047
@@ -347,7 +347,7 @@ ScriptsOnlyBuild:
     className: SignalTrack
   - hash:
       serializedVersion: 2
-      Hash: e624211ab5092cd6e39617fe81265064
+      Hash: d1b9543991fdeb716acdd1678c3887eb
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: Company
@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/admin/Desktop/test.apk
+  playerPath: C:/Users/kiske/Desktop/test.apk

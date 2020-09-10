@@ -263,67 +263,103 @@ public class MainGame : MonoBehaviour
         SearchEnemyInList(false, null);
     }
 
-    void OnSearchPathRedTeam(PlatoonMoveSpeed speed)
+    void OnCheckRedTeamNeedPathFind(PlatoonMoveSpeed speed)
     {
         for (int i = 0; i < redCompanyList.Count; i++)
         {
-            if (!redCompanyList[i].newPathFind) continue; // 새로운 패스파인드를 할 수 있는지?
+            if (!redCompanyList[i].newPathFind) continue;
+
+            if (redCompanyList[i].speed != speed) continue;
 
             for (int j = 0; j < redCompanyList[i].platoonList.Count; j++)
             {
-                if (redCompanyList[i].platoonList[j].NeedsToPathFind()) // 패스파인드를 할 필요가 있는지 체크
+                if (redCompanyList[i].platoonList[j].NeedsToPathFind())
                 {
-                    redCompanyList[i].needPathFind = true;
+                    redCompanyList[i].companyCommander.PathCheck();
                     break;
                 }
             }
+        }
+
+        OnCheckBlueTeamNeedPathFind(speed);
+    }
+
+    void OnCheckBlueTeamNeedPathFind(PlatoonMoveSpeed speed)
+    {
+        for (int i = 0; i < blueCompanyList.Count; i++)
+        {
+            if (!blueCompanyList[i].newPathFind) continue;
+
+            if (blueCompanyList[i].speed != speed) continue;
+
+            for (int j = 0; j < blueCompanyList[i].platoonList.Count; j++)
+            {
+                if (blueCompanyList[i].platoonList[j].NeedsToPathFind())
+                {
+                    blueCompanyList[i].companyCommander.PathCheck();
+                    break;
+                }
+            }
+        }
+
+        OnCheckMoveProcess(speed);
+    }
+
+    void OnCheckMoveProcess(PlatoonMoveSpeed speed)
+    {
+        /*
+        for (int i = 0; i < redCompanyList.Count; i++)
+        {
+            if (redCompanyList[i].speed != speed) continue;
+
+            CalcMoveProcess(redCompanyList[i]);
         }
 
         for (int i = 0; i < blueCompanyList.Count; i++)
         {
-            if (!blueCompanyList[i].newPathFind) continue; // 새로운 패스파인드를 할 수 있는지?
+            if (blueCompanyList[i].speed != speed) continue;
 
-            for (int j = 0; j < blueCompanyList[i].platoonList.Count; j++)
-            {
-                if (blueCompanyList[i].platoonList[j].NeedsToPathFind()) // 패스파인드를 할 필요가 있는지 체크
-                {
-                    blueCompanyList[i].needPathFind = true;
-                    break;
-                }
-            }
+            CalcMoveProcess(blueCompanyList[i]);
         }
+        */
 
+        OnMoveRedTeam(speed);
+    }
+
+    /*
+    void OnRedTeamCheckNeedPathFind(PlatoonMoveSpeed speed)
+    {
         if (companyIdx < redCompanyList.Count)
         {
-            if (redCompanyList[companyIdx].newPathFind && redCompanyList[companyIdx].needPathFind) // 새로운 패스파인드를 할 수 있고 패스파인드를 할 필요가 있다면?
+            if (redCompanyList[companyIdx].newPathFind)
             {
-                SearchPathPlatoonInList(redCompanyList[companyIdx].platoonList, speed, delegate { platoonIdx = 0; companyIdx++; OnSearchPathRedTeam(speed); });
+                SetCompanyPathInList(redCompanyList[companyIdx].platoonList, speed, delegate { companyIdx++; OnRedTeamCheckNeedPathFind(speed); });
             }
             else
             {
-                companyIdx++; 
-                OnSearchPathRedTeam(speed);
+                companyIdx++;
+                OnRedTeamCheckNeedPathFind(speed);
             }
         }
         else
         {
             companyIdx = 0;
-            OnSearchPathBlueTeam(speed);
+            OnBlueTeamCheckNeedPathFind(speed);
         }
     }
 
-    void OnSearchPathBlueTeam(PlatoonMoveSpeed speed)
+    void OnBlueTeamCheckNeedPathFind(PlatoonMoveSpeed speed)
     {
         if (companyIdx < blueCompanyList.Count)
         {
-            if (blueCompanyList[companyIdx].newPathFind && blueCompanyList[companyIdx].needPathFind) // 새로운 패스파인드를 할 수 있고 패스파인드를 할 필요가 있다면?
+            if (blueCompanyList[companyIdx].newPathFind)
             {
-                SearchPathPlatoonInList(blueCompanyList[companyIdx].platoonList, speed, delegate { platoonIdx = 0; companyIdx++; OnSearchPathBlueTeam(speed); });
+                SetCompanyPathInList(blueCompanyList[companyIdx].platoonList, speed, delegate { companyIdx++; OnBlueTeamCheckNeedPathFind(speed); });
             }
             else
             {
                 companyIdx++;
-                OnSearchPathBlueTeam(speed);
+                OnBlueTeamCheckNeedPathFind(speed);
             }
         }
         else
@@ -332,6 +368,7 @@ public class MainGame : MonoBehaviour
             OnMoveRedTeam(speed);
         }
     }
+    */
 
     // 레드팀 소대 이동 페이즈
     void OnMoveRedTeam(PlatoonMoveSpeed speed)
@@ -411,19 +448,27 @@ public class MainGame : MonoBehaviour
     {
         for (int i = 0; i < redCompanyList.Count; i++)
         {
+            redCompanyList[i].newPathFind = true;
+            redCompanyList[i].needPathFind = false;
+            redCompanyList[i].pathList.Clear();
+
             for (int j = 0; j < redCompanyList[i].platoonList.Count; j++)
             {
-                redCompanyList[i].newPathFind = true;
-                redCompanyList[i].needPathFind = false;
+                redCompanyList[i].platoonList[j].newPathFind = true;
+                redCompanyList[i].platoonList[j].platoonPath.Clear();
             }
         }
 
         for (int i = 0; i < blueCompanyList.Count; i++)
         {
+            blueCompanyList[i].newPathFind = true;
+            blueCompanyList[i].needPathFind = false;
+            blueCompanyList[i].pathList.Clear();
+
             for (int j = 0; j < blueCompanyList[i].platoonList.Count; j++)
             {
-                blueCompanyList[i].newPathFind = true;
-                blueCompanyList[i].needPathFind = false;
+                blueCompanyList[i].platoonList[j].newPathFind = true;
+                blueCompanyList[i].platoonList[j].platoonPath.Clear();
             }
         }
 
@@ -554,34 +599,12 @@ public class MainGame : MonoBehaviour
         }
     }
 
-    void SearchPathPlatoonInList(List<Platoon> list, PlatoonMoveSpeed speed, Action action)
-    {
-        if (platoonIdx < list.Count)
-        {
-            if (list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK && list[platoonIdx].companyCommander == list[platoonIdx]) // 유닛이 공격상태가 아니고 중대장 소대라면
-            {
-                list[platoonIdx].PathCheck(delegate { SearchPathPlatoonInList(list, speed, action); });
-            }
-            else
-            {
-                platoonIdx++;
-                SearchPathPlatoonInList(list, speed, action);
-            }
-        }
-        else
-        {
-            platoonIdx = 0;
-            action();
-        }
-    }
-
-
     // 해당하는 리스트의 소대를 이동시킴
     void MovePlatoonInList(List<Platoon> list, PlatoonMoveSpeed speed, Action action)
     {
         if (platoonIdx < list.Count)
         {
-            if (list[platoonIdx].PlatoonMoveSpeed == speed && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
+            if (list[platoonIdx].platoonMoveSpeed == speed && list[platoonIdx].platoonStatus != PlatoonStatus.UNIT_ATTACK)
             {
                 list[platoonIdx].Move(delegate { MovePlatoonInList(list, speed, action); });
             }
@@ -1203,6 +1226,20 @@ public class MainGame : MonoBehaviour
         company.newPathFind = true;
         company.needPathFind = false;
         company.platoonList = PlatoonSpawn(mos, size, company.companyNum, formationtNum, SetCompanyStartTile(formationtNum, isRed), isRed);
+
+        switch (mos)
+        {
+            case PlatoonMos.ARCHER:
+            case PlatoonMos.FOOTMAN:
+                company.speed = PlatoonMoveSpeed.TICK_10;
+                break;
+            case PlatoonMos.KNIGHT:
+                company.speed = PlatoonMoveSpeed.TICK_15;
+                break;
+            case PlatoonMos.SPEARMAN:
+                company.speed = PlatoonMoveSpeed.TICK_5;
+                break;
+        }
         if (company.platoonList.Count > 0) company.companyCommander = company.platoonList[0].companyCommander;
         company.pathList = new List<PathStruct>();
         companyList.Add(company);
@@ -1511,6 +1548,7 @@ public class MainGame : MonoBehaviour
         else companyList = blueCompanyList;
 
         companyList[companyNum].pathList = pathList;
+        companyList[companyNum].newPathFind = false;
 
         SetMoveProcess(companyList[companyNum]);
     }
@@ -1536,6 +1574,32 @@ public class MainGame : MonoBehaviour
         return companyList[companyNum].pathList;
     }
 
+    public bool GetPossibleCompanyNewPath(int companyNum, bool isRed)
+    {
+        List<Company> companyList;
+
+        if (isRed) companyList = redCompanyList;
+        else companyList = blueCompanyList;
+
+        return companyList[companyNum].newPathFind;
+    }
+
+    void SetCompanyPathInList(List<Platoon> list, PlatoonMoveSpeed speed, Action action)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].platoonMoveSpeed != speed) continue;
+
+            if (list[i].NeedsToPathFind()) // 패스파인드를 할 필요가 있는지 체크
+            {
+                list[i].companyCommander.PathCheck();
+                return;
+            }
+        }
+
+        action();
+    }
+
     // 패스파인딩 목표점 타일 인덱스를 세팅
     public void SetCompanyDest(int companyNum, bool isRed, int x, int y)
     {
@@ -1548,16 +1612,39 @@ public class MainGame : MonoBehaviour
         companyList[companyNum].companyDestY = y;
     }
 
+    public void CalcMoveProcess(Company company)
+    {
+        company.platoonList = company.platoonList.OrderBy(i => i.platoonPath.Count).ToList();
+    }
+
     // 완성된 패스파인딩 루트의 가까운 순서에 따라 이동을 결정합니다.
     public void SetMoveProcess(Company company)
     {
+        /*
         Dictionary<int, Platoon> moveProcessDic = new Dictionary<int, Platoon>();
         List<Platoon> newMoveList = new List<Platoon>();
         List<PathStruct> dirList = new List<PathStruct>();
+        */
 
+        for (int i = 0; i < company.platoonList.Count; i++)
+        {
+            if (company.platoonList[i].companyCommander == company.platoonList[i]) continue;
+
+            company.platoonList[i].SetPlatoonPath(company.pathList);
+        }
+
+        int count = company.platoonList.Count();
+        Debug.Log("test");
+
+        CalcMoveProcess(company);
+
+        Debug.Log("test");
+        /*
         // 소대가 패스파인딩 루트에 위치하는지?
         for (int i = 0; i < company.platoonList.Count; i++)
         {
+            company.platoonList[i].SetPlatoonPath(company.pathList);
+
             Tile currentTile = GetTileByIdx(company.platoonList[i].platoonCommander.tileIdxX, company.platoonList[i].platoonCommander.tileIdxY);
 
             for (int j = 0; j < company.pathList.Count; j++)
@@ -1608,6 +1695,7 @@ public class MainGame : MonoBehaviour
         {
             company.platoonList = newMoveList;
         }
+        */
     }
     
         // 테스트 장애물
@@ -1633,9 +1721,9 @@ public class MainGame : MonoBehaviour
 
                 OnSearchEnemyRedTem(); // 적 타겟은 매 틱 찾습니다.
 
-                if (tick % 4 == 0) OnSearchPathRedTeam(PlatoonMoveSpeed.TICK_15); // 1초에 15틱 이동
-                if (tick % 6 == 0) OnSearchPathRedTeam(PlatoonMoveSpeed.TICK_10); // 1초에 10틱 이동
-                if (tick % 12 == 0) OnSearchPathRedTeam(PlatoonMoveSpeed.TICK_5); // 1초에 5틱 이동
+                if (tick % 4 == 0) OnCheckRedTeamNeedPathFind(PlatoonMoveSpeed.TICK_15); // 1초에 15틱 이동
+                if (tick % 6 == 0) OnCheckRedTeamNeedPathFind(PlatoonMoveSpeed.TICK_10); // 1초에 10틱 이동
+                if (tick % 12 == 0) OnCheckRedTeamNeedPathFind(PlatoonMoveSpeed.TICK_5); // 1초에 5틱 이동
                 if (tick % 60 == 0) OnAttackRedTeam(); // 1초마다 공격합니다.
             }
         }

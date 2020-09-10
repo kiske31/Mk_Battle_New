@@ -14,6 +14,7 @@ public class Company : MonoBehaviour
     public bool needPathFind; // 패스파인드를 할 필요가 있는가?
     public int companyDestX;
     public int companyDestY;
+    public PlatoonMoveSpeed speed;
 }
 
 public struct PathStruct
