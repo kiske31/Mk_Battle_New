@@ -5816,7 +5816,7 @@ MonoBehaviour:
     stopOnDespawn: 0
     Audio: 0
     Particles: 0
-    foldout: 1
+    foldout: 0
   - prefab: {fileID: 1096526592746783193, guid: 4339c9f5b6fa2a6479e8d75832173d53,
       type: 3}
     id: 
@@ -5968,7 +5968,7 @@ MonoBehaviour:
     stopOnDespawn: 0
     Audio: 0
     Particles: 0
-    foldout: 1
+    foldout: 0
   - prefab: {fileID: 1096526592746783193, guid: 6ee73b03ff701f045b138b85e5a486c7,
       type: 3}
     id: 
@@ -6007,6 +6007,25 @@ MonoBehaviour:
     Audio: 0
     Particles: 0
     foldout: 0
+  - prefab: {fileID: 5693529743010807570, guid: 1d5afe8b5cb9ec44aa658ab7b563dafc,
+      type: 3}
+    id: 
+    mode: 0
+    despawnPos: {x: -100, y: -100, z: -100}
+    despawned: []
+    spawned: []
+    m_Root: {fileID: 0}
+    allowGrowth: 1
+    debugMessages: 1
+    useCustomRoot: 0
+    audioSourceHandling: 0
+    particleSystemHandling: 0
+    size: 1
+    playOnSpawn: 0
+    stopOnDespawn: 0
+    Audio: 0
+    Particles: 0
+    foldout: 1
   debugMessages: 1
   spawnDespawnMessages: 1
 --- !u!4 &991618963

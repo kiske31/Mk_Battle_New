@@ -77,21 +77,21 @@ ScriptsOnlyBuild:
     - Class: 114
       Script: {instanceID: 12456}
     - Class: 114
-      Script: {instanceID: 12650}
+      Script: {instanceID: 12652}
     - Class: 114
-      Script: {instanceID: 12750}
+      Script: {instanceID: 12752}
     - Class: 114
-      Script: {instanceID: 13042}
+      Script: {instanceID: 13044}
     - Class: 114
-      Script: {instanceID: 13102}
+      Script: {instanceID: 13104}
     - Class: 114
-      Script: {instanceID: 13116}
+      Script: {instanceID: 13118}
     - Class: 114
-      Script: {instanceID: 13132}
+      Script: {instanceID: 13134}
     - Class: 114
-      Script: {instanceID: 13166}
+      Script: {instanceID: 13168}
     - Class: 114
-      Script: {instanceID: 13174}
+      Script: {instanceID: 13176}
     - Class: 115
       Script: {instanceID: 0}
     - Class: 128
@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/kiske/Desktop/test.apk
+  playerPath: C:/Users/admin/Desktop/test.apk
