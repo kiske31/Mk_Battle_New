@@ -22,11 +22,10 @@ public enum PlatoonStatus
 {
     UNIT_IDLE = 0, // 유닛 정지
     UNIT_ATTACK, // 유닛 공격
+    UNIT_ATTACK_READY,
     UNIT_FIND_MOVE, // 중대 타겟으로 이동
     UNIT_ATTACK_MOVE, // 소대 타겟으로 이동
     UNIT_MOVE, // 유닛 이동 (부대장 유닛의 타겟도 없기 때문에 부대장 유닛의 무브를 따름)
-    UNIT_WAIT_ATK, // 유닛 공격 대기
-    UNIT_PATH_FINDING, // 유닛 우회 이동
     UNIT_STATUS_NUM
 }
 
@@ -79,7 +78,7 @@ public struct SearchArea
 
 public class Platoon : MonoBehaviour
 {
-    public const int BALANCE_DMG = 3; // 밸런스를 위한 데미지 감소 값
+    public const int BALANCE_DMG = 1; // 밸런스를 위한 데미지 감소 값
 
     public GameObject parentObj; // 하이어라키에서 소대들이 중대로 묶일 빈 오브젝트
     public List<Unit> unitList; // 소대의 유닛 리스트
@@ -139,9 +138,9 @@ public class Platoon : MonoBehaviour
 
     public PlatoonMoveSpeed platoonMoveSpeed; // 1초에 사용할 이동 틱의 개수 (소대의 이동 속도가 됨)
 
-    public List<PlatoonMoveDirection> pathList;
-
     public Dictionary<Tile, int> closePathDic;
+
+    List<PathStruct> battleAreaList;
 
     public bool newPathFind;
 
@@ -158,6 +157,15 @@ public class Platoon : MonoBehaviour
 
     public int battleAreaX;
     public int battleAreaY;
+
+    bool isTargetFind;
+
+    public Tile prevTile;
+
+    public float centerPosX;
+    public float centerPosY;
+
+    public int platoonPathCount = 0;
 
     // 패스파인딩 리스트
     List<SearchArea> searchListLeft;
@@ -187,8 +195,8 @@ public class Platoon : MonoBehaviour
         searchListRightDown = new List<SearchArea>();
 
         closeTileDic = new Dictionary<Tile, int>();
-        pathList = new List<PlatoonMoveDirection>();
         closePathDic = new Dictionary<Tile, int>();
+        battleAreaList = new List<PathStruct>();
 
         string prefabName = "Red"; // 병사 오브젝트 프리펩
         int platoonCount = (int)num; // 배치될 병사의 수
@@ -205,6 +213,7 @@ public class Platoon : MonoBehaviour
         this.targetPlatoon = null;
         this.mosAtk = 2;
         this.newPathFind = true;
+        this.isTargetFind = false;
 
         float tempHp = 10;
 
@@ -283,6 +292,8 @@ public class Platoon : MonoBehaviour
         startDestinationY = platoonCommander.tileIdxY;
 
         SetPlatoonCommanderToUnit(platoonCommander);
+
+        SetPlatoonCenterPos();
     }
 
     // 소대에서 병사가 배치되야할 위치를 결정
@@ -296,8 +307,8 @@ public class Platoon : MonoBehaviour
         {
             platoonCommander = unit;
 
-            if (unit.isRed) unitPos = UnitPos.RIGHT_CENTER;
-            else unitPos = UnitPos.LEFT_CENTER;
+            if (unit.isRed) unitPos = UnitPos.CENTER;
+            else unitPos = UnitPos.CENTER;
         }
         else
         {
@@ -337,9 +348,7 @@ public class Platoon : MonoBehaviour
                 }
             }
 
-            /*
-            // 센터기준으로 부대장 결정 테스트 해보자
-            if (unit.isRed && unitPos == UnitPos.POS_UNKNOW) // 레드팀 부대장 결정
+            if (unitPos == UnitPos.POS_UNKNOW)
             {
                 switch (num)
                 {
@@ -347,114 +356,54 @@ public class Platoon : MonoBehaviour
                         if (unit.platoonIdxX == 1 && unit.platoonIdxY == 1)
                         {
                             platoonCommander = unit;
-                            unitPos = UnitPos.LEFT_CENTER;
+                            unitPos = UnitPos.CENTER;
                         }
                         break;
                     case PlatoonSize.FIVE_THOUSAND:
-                    case PlatoonSize.TEN_THOUSAND:
-                        if (unit.platoonIdxX == 2 && unit.platoonIdxY == 2)
+                        if (isRed)
                         {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.LEFT_CENTER;
-                        }
-                        break;
-                }
-            }
-            else if (!unit.isRed && unitPos == UnitPos.POS_UNKNOW) // 블루팀 부대장 결정
-            {
-                switch (num)
-                {
-                    case PlatoonSize.THOUSAND:
-                    case PlatoonSize.FIVE_THOUSAND:
-                        if (unit.platoonIdxX == 1 && unit.platoonIdxY == 1)
-                        {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.RIGHT_CENTER;
-                        }
-                        break;
-                    case PlatoonSize.TEN_THOUSAND:
-                        if (unit.platoonIdxX == 2 && unit.platoonIdxY == 2)
-                        {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.RIGHT_CENTER;
-                        }
-                        break;
-                }
-            }
-            */
-
-            if (unit.isRed && unitPos == UnitPos.RIGHT) // 레드팀 부대장 결정
-            {
-                switch (num)
-                {
-                    case PlatoonSize.THOUSAND:
-                        if (unit.platoonIdxY == 1) 
-                        {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.RIGHT_CENTER;
-                        }
-                        break;
-                    case PlatoonSize.FIVE_THOUSAND:
-                        if (unit.platoonNum > 2)
-                        {
-                            if (unit.platoonIdxY == 1)
+                            if (unit.platoonNum > 2)
                             {
-                                platoonCommander = unit;
-                                unitPos = UnitPos.RIGHT_CENTER;
+                                if (unit.platoonIdxX == 2 && unit.platoonIdxY == 1)
+                                {
+                                    platoonCommander = unit;
+                                    unitPos = UnitPos.CENTER;
+                                }
+                            }
+                            else
+                            {
+                                if (unit.platoonIdxX == 2 && unit.platoonIdxY == 2)
+                                {
+                                    platoonCommander = unit;
+                                    unitPos = UnitPos.CENTER;
+                                }
                             }
                         }
                         else
                         {
-                            if (unit.platoonIdxY == 2)
+                            if (unit.platoonNum > 1)
                             {
-                                platoonCommander = unit;
-                                unitPos = UnitPos.RIGHT_CENTER;
+                                if (unit.platoonIdxX == 1 && unit.platoonIdxY == 1)
+                                {
+                                    platoonCommander = unit;
+                                    unitPos = UnitPos.CENTER;
+                                }
+                            }
+                            else
+                            {
+                                if (unit.platoonIdxX == 1 && unit.platoonIdxY == 2)
+                                {
+                                    platoonCommander = unit;
+                                    unitPos = UnitPos.CENTER;
+                                }
                             }
                         }
                         break;
                     case PlatoonSize.TEN_THOUSAND:
-                        if (unit.platoonIdxY == 2)
+                        if (unit.platoonIdxX == 2 && unit.platoonIdxY == 2)
                         {
                             platoonCommander = unit;
-                            unitPos = UnitPos.RIGHT_CENTER;
-                        }
-                        break;
-                }
-            }
-            else if (!unit.isRed && unitPos == UnitPos.LEFT) // 블루팀 부대장 결정
-            {
-                switch (num)
-                {
-                    case PlatoonSize.THOUSAND:
-                        if (unit.platoonIdxY == 1)
-                        {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.LEFT_CENTER;
-                        }
-                        break;
-                    case PlatoonSize.FIVE_THOUSAND:
-                        if (unit.platoonNum > 1)
-                        {
-                            if (unit.platoonIdxY == 1)
-                            {
-                                platoonCommander = unit;
-                                unitPos = UnitPos.LEFT_CENTER;
-                            }
-                        }
-                        else
-                        {
-                            if (unit.platoonIdxY == 2)
-                            {
-                                platoonCommander = unit;
-                                unitPos = UnitPos.LEFT_CENTER;
-                            }
-                        }
-                        break;
-                    case PlatoonSize.TEN_THOUSAND:
-                        if (unit.platoonIdxY == 2)
-                        {
-                            platoonCommander = unit;
-                            unitPos = UnitPos.LEFT_CENTER;
+                            unitPos = UnitPos.CENTER;
                         }
                         break;
                 }
@@ -466,72 +415,199 @@ public class Platoon : MonoBehaviour
         return unitPos;
     }
 
-    public void PathCheck()
-    {
-        PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
-
-        if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
-
-        platoonPath = SetCompanyPathFindListToDirection(direction);
-        mainGame.SetCompanyPath(companyNum, isRed, platoonPath);
-    }
-
     public void Move(Action callBack)
     {
         moveCallback = callBack;
 
         if (platoonStatus == PlatoonStatus.UNIT_MOVE) // 중대 타겟도 소대 타겟도 없이 한방향 이동일 때 (중대 패스파인딩 우선)
         {
-            PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
-            if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
-
-            platoonMoveDirection = direction;
-
             if (platoonPath.Count > 0)
             {
+                platoonPathCount = platoonPath.Count;
                 PlatoonTargetIdxX = platoonPath[0].tile.idxX;
                 PlatoonTargetIdxY = platoonPath[0].tile.idxY;
                 platoonMoveDirection = PlatoonDirectionDecision();
 
                 if (DecisionMoveByDirection(platoonMoveDirection))
                 {
-                    StartMove(platoonMoveDirection);
-                    platoonPath.RemoveAt(0);
+                    Tile currentTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
+                    Tile tile = DecisionTileByDirection(platoonMoveDirection, currentTile);
+                    // StartMove(platoonMoveDirection);
+                    // if (tile == platoonPath[0].tile) platoonPath.RemoveAt(0);
+
+                    if (tile == platoonPath[0].tile)
+                    {
+                        platoonPath.RemoveAt(0);
+                        StartMove(platoonMoveDirection);
+                    }
+                    else
+                    {
+                        // StartMove(PathFinding(platoonMoveDirection));
+                        mainGame.platoonIdx++;
+                        moveCallback();
+                    }
                 }
                 else
                 {
-                    StartMove(PathFinding(platoonMoveDirection));
+                    //StartMove(PathFinding(platoonMoveDirection));
 
-                    /*
                     // 사실 기획의도는 움직임을 멈추는게 맞는거 같긴한데 이러면 이상함;
-                    platoonStatus = PlatoonStatus.UNIT_IDLE;
+                    //platoonStatus = PlatoonStatus.UNIT_IDLE;
                     mainGame.platoonIdx++;
                     moveCallback();
-                    */
-                }
+                 }
             }
             else
             {
+                platoonPathCount = 0;
+                PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
+                if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
+
+                platoonMoveDirection = direction;
+
                 if (DecisionMoveByDirection(platoonMoveDirection))
                 {
                     StartMove(platoonMoveDirection);
                 }
                 else
                 {
-                    StartMove(PathFinding(platoonMoveDirection));
+                    mainGame.platoonIdx++;
+                    moveCallback();
+                    // StartMove(PathFinding(platoonMoveDirection));
                 }
             }
         }
         else if (platoonStatus == PlatoonStatus.UNIT_ATTACK_MOVE) // 소대 타겟을 향해 이동할 때 (소대별 패스파인딩을 따로 합니다.)
         {
+            if (platoonPath.Count > 0)
+            {
+                platoonPathCount = platoonPath.Count;
+                PlatoonTargetIdxX = platoonPath[0].tile.idxX;
+                PlatoonTargetIdxY = platoonPath[0].tile.idxY;
+                platoonMoveDirection = PlatoonDirectionDecision();
 
+                if (DecisionMoveByDirection(platoonMoveDirection))
+                {
+                    Tile currentTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
+                    Tile tile = DecisionTileByDirection(platoonMoveDirection, currentTile);
+                    //StartMove(platoonMoveDirection);
+                    //if (tile == platoonPath[0].tile) platoonPath.RemoveAt(0);
+
+                    if (tile == platoonPath[0].tile)
+                    {
+                        platoonPath.RemoveAt(0);
+                        StartMove(platoonMoveDirection);
+                    }
+                    else
+                    {
+                        // StartMove(PathFinding(platoonMoveDirection));
+
+                        mainGame.platoonIdx++;
+                        moveCallback();
+                    }
+                }
+                else
+                {
+                    //StartMove(PathFinding(platoonMoveDirection));
+
+                    // 사실 기획의도는 움직임을 멈추는게 맞는거 같긴한데 이러면 이상함;
+                    mainGame.platoonIdx++;
+                    moveCallback();
+                }
+            }
+            else
+            {
+                platoonPathCount = 0;
+                PlatoonTargetIdxX = targetPlatoon.platoonCommander.tileIdxX;
+                PlatoonTargetIdxY = targetPlatoon.platoonCommander.tileIdxY;
+                platoonMoveDirection = PlatoonDirectionDecision();
+                
+                if (DecisionMoveByDirection(platoonMoveDirection))
+                {
+                    StartMove(platoonMoveDirection);
+                }
+                else
+                {
+                    mainGame.platoonIdx++;
+                    moveCallback();
+                    // StartMove(PathFinding(platoonMoveDirection));
+                }
+            }
         }
         else if (platoonStatus == PlatoonStatus.UNIT_FIND_MOVE) // 중대 타겟을 향해 이동할 때 (중대 패스파인딩 우선)
         {
+            if (platoonPath.Count > 0)
+            {
+                platoonPathCount = platoonPath.Count;
+                // Unit enemy = mainGame.GetCompanyTarget(companyNum, isRed).platoonCommander;
+                // PlatoonTargetIdxX = enemy.tileIdxX;
+                // PlatoonTargetIdxY = enemy.tileIdxY;
+                // platoonMoveDirection = PlatoonDirectionDecision();
 
+                PlatoonTargetIdxX = platoonPath[0].tile.idxX;
+                PlatoonTargetIdxY = platoonPath[0].tile.idxY;
+                platoonMoveDirection = PlatoonDirectionDecision();
+
+                if (DecisionMoveByDirection(platoonMoveDirection))
+                {
+                    Tile currentTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
+                    Tile tile = DecisionTileByDirection(platoonMoveDirection, currentTile);
+
+                    if (tile == platoonPath[0].tile)
+                    {
+                        platoonPath.RemoveAt(0);
+                        StartMove(platoonMoveDirection);
+                    }
+                    else
+                    {
+                        // StartMove(PathFinding(platoonMoveDirection));
+
+                        mainGame.platoonIdx++;
+                        moveCallback();
+                    }
+                }
+                else
+                {
+                    //StartMove(PathFinding(platoonMoveDirection));
+
+                    // 사실 기획의도는 움직임을 멈추는게 맞는거 같긴한데 이러면 이상함;
+                    mainGame.platoonIdx++;
+                    moveCallback();
+                }
+            }
+            else
+            {
+                platoonPathCount = 0;
+                Platoon enemyPlatoon = mainGame.GetCompanyTarget(companyNum, isRed);
+                if (enemyPlatoon != null)
+                {
+                    Unit enemy = mainGame.GetCompanyTarget(companyNum, isRed).platoonCommander;
+                    PlatoonTargetIdxX = enemy.tileIdxX;
+                    PlatoonTargetIdxY = enemy.tileIdxY;
+                    platoonMoveDirection = PlatoonDirectionDecision();
+
+                    if (DecisionMoveByDirection(platoonMoveDirection))
+                    {
+                        StartMove(platoonMoveDirection);
+                    }
+                    else
+                    {
+                        // mainGame.platoonIdx++;
+                        // moveCallback();
+
+                        StartMove(PathFinding(platoonMoveDirection));
+                    }
+                }
+                else
+                {
+                    mainGame.platoonIdx++;
+                    moveCallback();
+                }
+            }
         }
         else
         {
+            platoonPathCount = 0;
             mainGame.platoonIdx++;
 
             if (moveCallback != null)
@@ -582,41 +658,20 @@ public class Platoon : MonoBehaviour
                 damage /= BALANCE_DMG;
             }
 
-            // Debug.Log("공격! : " + isRed + "팀/" + companyNum +", 데미지 : " + damage);
+            if (damage < 1) damage = 1;
+
+            Debug.Log("공격! : " + isRed + "팀/" + companyNum +", 데미지 : " + damage);
 
             targetPlatoon.DamgeToPlatoon(damage, this); // 적 소대 체력을 깎습니다.
 
             if (targetPlatoon.hp <= 0) // 적 소대가 전멸했다면?
             {
+                targetPlatoon = null;
+                platoonStatus = PlatoonStatus.UNIT_IDLE; // 소대 상태를 기본으로
+
                 if (this == companyCommander) // 본인 소대가 중대장이라면?
                 {
-                    targetPlatoon = null; // 현재 소대 목표를 초기화
                     mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed); // 중대 목표를 초기화합니다.
-                    platoonStatus = PlatoonStatus.UNIT_IDLE; // 소대 상태를 기본으로
-                }
-                else // 본인 소대가 중대원이라면?
-                {
-                    Platoon CompanyTarget = mainGame.GetCompanyTarget(companyNum, isRed); // 중대 타겟을 체크해보자.
-
-                    if (CompanyTarget != null) // 중대 타겟이 존재하는데
-                    {
-                        if (CompanyTarget == targetPlatoon) // 중대 타겟을 잡았다?
-                        {
-                            targetPlatoon = null;
-                            mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed); // 중대 타겟 초기화
-                            platoonStatus = PlatoonStatus.UNIT_IDLE; // 소대 상태를 기본으로
-                        }
-                        else // 중대 타겟이 아닌 상대를 잡았다?
-                        {
-                            targetPlatoon = CompanyTarget; // 중대 타겟으로 목표 변경
-                            platoonStatus = PlatoonStatus.UNIT_FIND_MOVE; // 중대 타겟을 향해 이동
-                        }
-                    }
-                    else // 중대 타겟도 없다?
-                    {
-                        targetPlatoon = null;
-                        platoonStatus = PlatoonStatus.UNIT_IDLE; // 소대 상태를 기본으로
-                    }
                 }
             }
         }
@@ -632,26 +687,13 @@ public class Platoon : MonoBehaviour
 
             if (target == null) // 적이 없다면 상태 IDLE
             {
-                if (this != companyCommander) targetPlatoon = mainGame.GetCompanyTarget(companyNum, isRed);
-
-                if (targetPlatoon != null)
-                {
-                    platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
-                }
-                else
-                {
-                    platoonStatus = PlatoonStatus.UNIT_IDLE;
-                }
+                platoonStatus = PlatoonStatus.UNIT_IDLE;
             }
             else // 적이 존재한다면 공격 준비
             {
+                Debug.Log("공격준비~1 : " + isRed + "팀/" + companyNum);
                 platoonStatus = PlatoonStatus.UNIT_ATTACK;
                 targetPlatoon = target.platoon;
-
-                if (this == companyCommander) // 중대장 소대였다면 중대 타겟으로 설정
-                {
-                    mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed);
-                }
             }
         }
 
@@ -746,7 +788,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.LEFT ||
-                                unitList[i].platoonPos == UnitPos.LEFT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.LEFT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.LEFT_UP)
                             {
@@ -760,7 +801,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.RIGHT ||
-                                unitList[i].platoonPos == UnitPos.RIGHT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_UP)
                             {
@@ -800,7 +840,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.LEFT ||
-                                unitList[i].platoonPos == UnitPos.LEFT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.LEFT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.LEFT_UP ||
                                 unitList[i].platoonPos == UnitPos.DOWN ||
@@ -816,7 +855,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.LEFT ||
-                                unitList[i].platoonPos == UnitPos.LEFT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.LEFT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.LEFT_UP ||
                                 unitList[i].platoonPos == UnitPos.UP ||
@@ -832,7 +870,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.RIGHT ||
-                                unitList[i].platoonPos == UnitPos.RIGHT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_UP ||
                                 unitList[i].platoonPos == UnitPos.DOWN ||
@@ -848,7 +885,6 @@ public class Platoon : MonoBehaviour
                         for (int i = 0; i < unitList.Count; i++)
                         {
                             if (unitList[i].platoonPos == UnitPos.RIGHT ||
-                                unitList[i].platoonPos == UnitPos.RIGHT_CENTER ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_DOWN ||
                                 unitList[i].platoonPos == UnitPos.RIGHT_UP ||
                                 unitList[i].platoonPos == UnitPos.UP ||
@@ -871,12 +907,14 @@ public class Platoon : MonoBehaviour
             Tile tile = DecisionTileByDirection(direction, mainGame.GetTileByIdx(checkUnitList[i].tileIdxX, checkUnitList[i].tileIdxY));
 
             if (tile == null) return false;
-            if (tile.isHaveUnit)
+            if (tile.isHaveUnit && tile.haveUnit.platoon != this)
             {
-                if (!usePathFind) return false;
+                if (!usePathFind)
+                {
+                    if (tile.haveUnit.platoon != this) return false;
+                }
                 else
                 {
-                    
                     if (tile.haveUnit.isRed == isRed)
                     {
                         if (tile.haveUnit.platoon != null)
@@ -886,7 +924,7 @@ public class Platoon : MonoBehaviour
                                 return false;
                             }
                         }
-                        else 
+                        else
                         {
                             return false;
                         }
@@ -959,6 +997,9 @@ public class Platoon : MonoBehaviour
         Dictionary<Tile, Unit> tileDic = new Dictionary<Tile, Unit>(); // 지나간 타일들의 정보를 담아둘 딕셔너리
         if (direction != PlatoonMoveDirection.DIR_DEFAULT)
         {
+            Tile startTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
+            Tile destinationTile = startTile;
+
             for (int i = 0; i < unitList.Count; i++)
             {
                 Tile currentTile = mainGame.GetTileByIdx(unitList[i].tileIdxX, unitList[i].tileIdxY);
@@ -980,6 +1021,8 @@ public class Platoon : MonoBehaviour
 
                 if (unitList[i] == platoonCommander)
                 {
+                    destinationTile = moveTile;
+
                     if (closeTileDic.ContainsKey(moveTile))
                     {
                         closeTileDic[moveTile] = mainGame.tick;
@@ -990,12 +1033,17 @@ public class Platoon : MonoBehaviour
                     }
                 }
 
+                prevTile = moveTile;
+
                 moveTile.SetObject(unitList[i]);
                 tileDic.Add(moveTile, unitList[i]);
                 unitList[i].tileIdxX = moveTile.idxX;
                 unitList[i].tileIdxY = moveTile.idxY;
                 unitList[i].gameObject.transform.position = new Vector3(moveTile.posX, moveTile.posY, 0); // 이동합시다
             }
+
+            centerPosX += destinationTile.idxX - startTile.idxX;
+            centerPosY += destinationTile.idxY - startTile.idxY;
         }
         else platoonStatus = PlatoonStatus.UNIT_IDLE;
 
@@ -1008,28 +1056,11 @@ public class Platoon : MonoBehaviour
         }
         else target = CheckEnemyTile(); // 주변에 적이 있는지 검사
 
-        if (target == null) // 적이 없다면 상태 IDLE
+        if (target != null)
         {
-            if (this != companyCommander) targetPlatoon = mainGame.GetCompanyTarget(companyNum, isRed);
-
-            if (targetPlatoon != null)
-            {
-                platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
-            }
-            else
-            {
-                platoonStatus = PlatoonStatus.UNIT_IDLE;
-            }
-        }
-        else // 적이 존재한다면 공격 준비
-        {
-            platoonStatus = PlatoonStatus.UNIT_ATTACK;
+            Debug.Log("공격준비~2 : " + isRed + "팀/" + companyNum);
+            platoonStatus = PlatoonStatus.UNIT_ATTACK_READY;
             targetPlatoon = target.platoon;
-
-            if (this == companyCommander) // 중대장 소대였다면 중대 타겟으로 설정
-            {
-                mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed);
-            }
         }
 
         if (moveCallback != null)
@@ -1060,6 +1091,8 @@ public class Platoon : MonoBehaviour
 
             // if ((PlatoonMoveDirection)directionNum != platoonBackDirection && closeTileDic.ContainsKey(tile))
 
+            if (tile == prevTile) continue;
+
             /*
             if (closeTileDic.ContainsKey(tile))
             {
@@ -1085,7 +1118,7 @@ public class Platoon : MonoBehaviour
                 // targetTile = mainGame.GetTileByIdx(startDestinationX, platoonCommander.tileIdxY);
             }
 
-            float distance = Vector3.Distance(new Vector3(targetX, targetY, 0), new Vector3(tile.idxX, tile.idxY, 0));
+            float distance = Vector3.Distance(new Vector3(targetX, targetY, 0), new Vector3(tile.idxX, tile.idxY));
 
             PathStruct dir = new PathStruct();
             dir.H = distance;
@@ -1099,6 +1132,7 @@ public class Platoon : MonoBehaviour
             List<PathStruct> list = dirList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
             platoonMoveDirection = list[0].dir; // 가장 빠른 타일
 
+            /*
             for (int i = 1; i < list.Count; i++)
             {
                 if (!closeTileDic.ContainsKey(list[i].tile))
@@ -1106,6 +1140,7 @@ public class Platoon : MonoBehaviour
                     closeTileDic.Add(list[i].tile, mainGame.tick);
                 } 
             }
+            */
         }
         else platoonMoveDirection = PlatoonMoveDirection.DIR_DEFAULT; // 없다면 제자리
 
@@ -1115,54 +1150,81 @@ public class Platoon : MonoBehaviour
     // 소대 인접 외곽 타일에 적이 위치한지 체크하자!
     public Unit CheckEnemyTile()
     {
-        Unit target = null; 
+        Unit target = null;
 
-        for (int i = 0; i < unitList.Count; i++)
+        if (platoonLine <= 1)
         {
-            UnitPos pos = unitList[i].platoonPos;
-
-            if (pos == UnitPos.CENTER || pos == UnitPos.POS_UNKNOW) continue;
-
-            Tile currentTile = mainGame.GetTileByIdx(unitList[i].tileIdxX, unitList[i].tileIdxY);
-            Tile targetTile = null;
-
-            switch (pos)
+            for (int i = 0; i < unitList.Count; i++)
             {
-                case UnitPos.LEFT:
-                case UnitPos.LEFT_CENTER:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_LEFT, currentTile);
-                    break;
-                case UnitPos.RIGHT:
-                case UnitPos.RIGHT_CENTER:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_RIGHT, currentTile);
-                    break;
-                case UnitPos.UP:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_UP, currentTile);
-                    break;
-                case UnitPos.DOWN:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_DOWN, currentTile);
-                    break;
-                case UnitPos.LEFT_DOWN:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_LEFT_DOWN, currentTile);
-                    break;
-                case UnitPos.LEFT_UP:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_LEFT_UP, currentTile);
-                    break;
-                case UnitPos.RIGHT_UP:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_RIGHT_UP, currentTile);
-                    break;
-                case UnitPos.RIGHT_DOWN:
-                    targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_RIGHT_DOWN, currentTile);
-                    break;
-            }
+                UnitPos pos = unitList[i].platoonPos;
 
-            if (targetTile != null && targetTile.isHaveUnit)
-            {
-                if (targetTile.haveUnit.isRed != unitList[i].isRed) // 이게 다르면 서로 적입니다.
-                {  
-                    target = targetTile.haveUnit.platoonCommander;
-                    break;
+                Tile currentTile = mainGame.GetTileByIdx(unitList[i].tileIdxX, unitList[i].tileIdxY);
+
+                switch (pos)
+                {
+                    case UnitPos.LEFT:
+                    case UnitPos.RIGHT:
+                        target  = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT, currentTile);
+                        if (target == null) target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT, currentTile);
+                        break;
+                    case UnitPos.UP:
+                    case UnitPos.LEFT_UP:
+                    case UnitPos.RIGHT_UP:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_UP, currentTile);
+                        if (target == null) target = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT_UP, currentTile);
+                        if (target == null) target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT_UP, currentTile);
+                        break;
+                    case UnitPos.DOWN:
+                    case UnitPos.LEFT_DOWN:
+                    case UnitPos.RIGHT_DOWN:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_DOWN, currentTile);
+                        if (target == null) target = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT_DOWN, currentTile);
+                        if (target == null) target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT_DOWN, currentTile);
+                        break;
                 }
+
+                if (target != null) break;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < unitList.Count; i++)
+            {
+                UnitPos pos = unitList[i].platoonPos;
+
+                if (pos == UnitPos.CENTER || pos == UnitPos.POS_UNKNOW) continue;
+
+                Tile currentTile = mainGame.GetTileByIdx(unitList[i].tileIdxX, unitList[i].tileIdxY);
+
+                switch (pos)
+                {
+                    case UnitPos.LEFT:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT, currentTile);
+                        break;
+                    case UnitPos.RIGHT:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT, currentTile);
+                        break;
+                    case UnitPos.UP:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_UP, currentTile);
+                        break;
+                    case UnitPos.DOWN:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_DOWN, currentTile);
+                        break;
+                    case UnitPos.LEFT_DOWN:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT_DOWN, currentTile);
+                        break;
+                    case UnitPos.LEFT_UP:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_LEFT_UP, currentTile);
+                        break;
+                    case UnitPos.RIGHT_UP:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT_UP, currentTile);
+                        break;
+                    case UnitPos.RIGHT_DOWN:
+                        target = CheckTargetNearBy(PlatoonMoveDirection.DIR_RIGHT_DOWN, currentTile);
+                        break;
+                }
+
+                if (target != null) break;
             }
         }
 
@@ -1189,11 +1251,9 @@ public class Platoon : MonoBehaviour
                 switch (pos)
                 {
                     case UnitPos.LEFT:
-                    case UnitPos.LEFT_CENTER:
                         targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_LEFT, currentTile);
                         break;
                     case UnitPos.RIGHT:
-                    case UnitPos.RIGHT_CENTER:
                         targetTile = DecisionTileByDirection(PlatoonMoveDirection.DIR_RIGHT, currentTile);
                         break;
                     case UnitPos.UP:
@@ -1230,7 +1290,7 @@ public class Platoon : MonoBehaviour
     {
         if (targetPlatoon == null) return null;
         
-        float distance = Vector3.Distance(new Vector3(targetPlatoon.platoonCommander.tileIdxX, targetPlatoon.platoonCommander.tileIdxY, 0), new Vector3(platoonCommander.tileIdxX, platoonCommander.tileIdxY, 0));
+        float distance = Vector3.Distance(new Vector3(targetPlatoon.platoonCommander.tileIdxX, targetPlatoon.platoonCommander.tileIdxY, 0), new Vector3(centerPosX, centerPosY, 0));
 
         if (distance <= range) return targetPlatoon.platoonCommander;
         else return null;
@@ -1291,8 +1351,7 @@ public class Platoon : MonoBehaviour
 
                 if (isRed)
                 {
-                    if (currentUnit.platoonPos == UnitPos.RIGHT_CENTER
-                    || currentUnit.platoonPos == UnitPos.RIGHT
+                    if (currentUnit.platoonPos == UnitPos.RIGHT
                     || currentUnit.platoonPos == UnitPos.RIGHT_UP
                     || currentUnit.platoonPos == UnitPos.RIGHT_DOWN)
                     {
@@ -1306,8 +1365,7 @@ public class Platoon : MonoBehaviour
                 }
                 else
                 {
-                    if (currentUnit.platoonPos == UnitPos.LEFT_CENTER
-                    || currentUnit.platoonPos == UnitPos.LEFT
+                    if (currentUnit.platoonPos == UnitPos.LEFT
                     || currentUnit.platoonPos == UnitPos.LEFT_UP
                     || currentUnit.platoonPos == UnitPos.LEFT_DOWN)
                     {
@@ -1350,7 +1408,7 @@ public class Platoon : MonoBehaviour
 
         if (commanderChange) SetPlatoonCommanderToUnit(platoonCommander);
 
-        platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+        SetPlatoonCenterPos();
 
         return true;
     }
@@ -1370,11 +1428,13 @@ public class Platoon : MonoBehaviour
         if (targetPlatoon == null)
         {
             targetPlatoon = enemy;
-            platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+            // platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+            /*
             if (this == companyCommander) // 본인 소대가 중대장이라면?
             {
                 mainGame.SetCompanyTarget(companyNum, targetPlatoon, isRed); // 중대 목표를 초기화합니다.
             }
+            */
         }
     }
 
@@ -1390,7 +1450,7 @@ public class Platoon : MonoBehaviour
 
         if (CheckReducePlatoon()) // 적 소대의 병사 배열이 줄어드는지 체킹합니다.
         {
-            platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
+            // platoonStatus = PlatoonStatus.UNIT_ATTACK_MOVE;
         }
     }
 
@@ -1415,6 +1475,7 @@ public class Platoon : MonoBehaviour
         }
     }
 
+    // 특정 방향으로 타깃없이 이동할 때 사용되는 패스파인딩
     public List<PathStruct> SetCompanyPathFindListToDirection(PlatoonMoveDirection direction)
     {
         PlatoonMoveDirection targetDirection = direction;
@@ -1451,16 +1512,11 @@ public class Platoon : MonoBehaviour
                 int offsetX = currentTileX - platoonCommander.tileIdxX;
                 int offsetY = currentTileY - platoonCommander.tileIdxY;
 
-                if (!DecisionMoveBySearchList((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
+                if (!DecisionMoveBySearchListForMovePath((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
 
                 Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
 
-                if (tile == null)
-                {
-                    // 길찾기 실패입니다.
-                    pathFindList.Clear();
-                    return pathFindList;
-                }
+                if (tile == null) continue;
 
                 if (tile == targetTile)
                 {
@@ -1475,8 +1531,109 @@ public class Platoon : MonoBehaviour
                 dir.H = distance;
                 dir.dir = (PlatoonMoveDirection)idx;
                 dir.tile = tile;
-                dir.targetX = destinationX;
-                dir.targetY = platoonCommander.tileIdxY;
+                dir.idxX = destinationX;
+                dir.idxY = platoonCommander.tileIdxY;
+                dirList.Add(dir);
+            }
+
+            if (dirList.Count > 0)
+            {
+                List<PathStruct> list = dirList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
+                directionNum = (int)list[0].dir;
+                pathFindList.Add(list[0]); // 가장 빠른 타일 방향
+                closePathDic.Add(mainGame.GetTileByIdx(currentTileX, currentTileY), 0);
+                currentTileX = list[0].tile.idxX;
+                currentTileY = list[0].tile.idxY;
+                dirList.Clear();
+            }
+            else
+            {
+                // 길찾기 실패입니다.
+                //pathFindList.Clear();
+                return pathFindList;
+            }
+        }
+    }
+
+    // 소대 공격 범위 내 패스파인딩
+    public List<PathStruct> SetPlatoonPathFindListToEnemyPlatoon(Platoon enemyPlatoon)
+    {
+
+        Tile targetTile = mainGame.GetTileByIdx(enemyPlatoon.platoonCommander.tileIdxX, enemyPlatoon.platoonCommander.tileIdxY);
+        int directionNum = 0;
+
+        dirList.Clear();
+
+        List<PathStruct> pathFindList = new List<PathStruct>();
+
+        closePathDic.Clear();
+
+        int currentTileX = platoonCommander.tileIdxX;
+        int currentTileY = platoonCommander.tileIdxY;
+
+        int friendlyXLeft = platoonCommander.tileIdxX - (battleAreaX + 4);
+        int friendlyXRight = platoonCommander.tileIdxX + battleAreaX;
+        int friendlyYUp = platoonCommander.tileIdxY + battleAreaY + 2;
+        int friendlyYDown = platoonCommander.tileIdxY - battleAreaY - 2;
+
+        int destinationX = 0;
+
+        if (isRed) destinationX = mainGame.tileCountX - 1;
+
+        SetSearchList();
+
+        isTargetFind = false;
+
+        while (true)
+        {
+            for (int i = directionNum - 3; i <= directionNum + 4; i++)
+            {
+
+                int idx = i;
+
+                if (i < 0) idx = i + 8;
+                else if (i > 7) idx = i - 8;
+
+                // 이 조건에 걸린다는 것은 패스 파인딩 루트가 전투 범위를 초과했다는 말입니다.
+                if (currentTileX < friendlyXLeft) break;
+                else if (currentTileX > friendlyXRight) break;
+                else if (currentTileY < friendlyYDown) break;
+                else if (currentTileY > friendlyYUp) break;
+
+                int offsetX = currentTileX - platoonCommander.tileIdxX;
+                int offsetY = currentTileY - platoonCommander.tileIdxY;
+
+                if (!DecisionMoveBySearchListForFindAttackMovePath((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
+
+                if (isTargetFind)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
+
+                if (tile == null) continue;
+
+                if (tile == targetTile)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                if (tile.isHaveUnit && tile.haveUnit.platoon == enemyPlatoon)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                if (closePathDic.ContainsKey(tile)) continue; // 지나간 타일이었다면 패스
+
+                float distance = Vector3.Distance(new Vector3(targetTile.idxX, targetTile.idxY, 0), new Vector3(tile.idxX, tile.idxY, 0));
+
+                PathStruct dir = new PathStruct();
+                dir.H = distance;
+                dir.dir = (PlatoonMoveDirection)idx;
+                dir.tile = tile;
+                dir.idxX = destinationX;
+                dir.idxY = platoonCommander.tileIdxY;
                 dirList.Add(dir);
             }
 
@@ -1499,6 +1656,97 @@ public class Platoon : MonoBehaviour
         }
     }
 
+    // 인식 범위에서 부대 타겟을 향해 나아갈 때 사용되는 패스파인딩
+    public List<PathStruct> SetCompanyPathFindListToEnemyPlatoon(Platoon enemyPlatoon)
+    {
+
+        Tile targetTile = mainGame.GetTileByIdx(enemyPlatoon.platoonCommander.tileIdxX, enemyPlatoon.platoonCommander.tileIdxY);
+        int directionNum = 0;
+
+        dirList.Clear();
+
+        List<PathStruct> pathFindList = new List<PathStruct>();
+
+        closePathDic.Clear();
+
+        int currentTileX = platoonCommander.tileIdxX;
+        int currentTileY = platoonCommander.tileIdxY;
+
+        int destinationX = 0;
+
+        if (isRed) destinationX = mainGame.tileCountX - 1;
+
+        SetSearchList();
+
+        isTargetFind = false;
+
+        while (true)
+        {
+            for (int i = directionNum - 3; i <= directionNum + 4; i++)
+            {
+
+                int idx = i;
+
+                if (i < 0) idx = i + 8;
+                else if (i > 7) idx = i - 8;
+
+                int offsetX = currentTileX - platoonCommander.tileIdxX;
+                int offsetY = currentTileY - platoonCommander.tileIdxY;
+
+                if (!DecisionMoveBySearchListForFindAttackMovePath((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
+
+                if (isTargetFind)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
+
+                if (tile == null) continue;
+
+                if (tile == targetTile)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                if (tile.isHaveUnit && tile.haveUnit.platoon == enemyPlatoon)
+                {
+                    return pathFindList; // 길찾기 성공
+                }
+
+                if (closePathDic.ContainsKey(tile)) continue; // 지나간 타일이었다면 패스
+
+                float distance = Vector3.Distance(new Vector3(targetTile.idxX, targetTile.idxY, 0), new Vector3(tile.idxX, tile.idxY, 0));
+
+                PathStruct dir = new PathStruct();
+                dir.H = distance;
+                dir.dir = (PlatoonMoveDirection)idx;
+                dir.tile = tile;
+                dir.idxX = tile.idxX;
+                dir.idxY = tile.idxY;
+                dirList.Add(dir);
+            }
+
+            if (dirList.Count > 0)
+            {
+                List<PathStruct> list = dirList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
+                directionNum = (int)list[0].dir;
+                pathFindList.Add(list[0]); // 가장 빠른 타일 방향
+                closePathDic.Add(mainGame.GetTileByIdx(currentTileX, currentTileY), 0);
+                currentTileX = list[0].idxX;
+                currentTileY = list[0].idxY;
+                dirList.Clear();
+            }
+            else
+            {
+                // 길찾기 실패입니다.
+                //pathFindList.Clear();
+                return pathFindList;
+            }
+        }
+    }
+
+    // 특정 타일을 향한 패스파인딩 (중대 패스파인딩의 시작점을 목표로 소대별 추가 루트를 만들어내는 용도)
     public List<PathStruct> SetCompanyPathFindListToTile(Tile targetTile)
     {
         int directionNum = 0;
@@ -1531,7 +1779,7 @@ public class Platoon : MonoBehaviour
                 int offsetX = currentTileX - platoonCommander.tileIdxX;
                 int offsetY = currentTileY - platoonCommander.tileIdxY;
 
-                if (!DecisionMoveBySearchList((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
+                if (!DecisionMoveBySearchListForMovePath((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
 
                 Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
 
@@ -1555,8 +1803,8 @@ public class Platoon : MonoBehaviour
                 dir.H = distance;
                 dir.dir = (PlatoonMoveDirection)idx;
                 dir.tile = tile;
-                dir.targetX = destinationX;
-                dir.targetY = platoonCommander.tileIdxY;
+                dir.idxX = tile.idxX;
+                dir.idxY = tile.idxY;
                 dirList.Add(dir);
             }
 
@@ -1566,8 +1814,8 @@ public class Platoon : MonoBehaviour
                 directionNum = (int)list[0].dir;
                 pathFindList.Add(list[0]); // 가장 빠른 타일 방향
                 closePathDic.Add(mainGame.GetTileByIdx(currentTileX, currentTileY), 0);
-                currentTileX = list[0].tile.idxX;
-                currentTileY = list[0].tile.idxY;
+                currentTileX = list[0].idxX;
+                currentTileY = list[0].idxY;
                 dirList.Clear();
             }
             else
@@ -1575,150 +1823,6 @@ public class Platoon : MonoBehaviour
                 // 길찾기 실패입니다.
                 pathFindList.Clear();
                 return pathFindList;
-            }
-        }
-    }
-
-    // 아군 우회에 사용할 패스 파인딩
-    public List<PlatoonMoveDirection> SetPathFindListToDirection(PlatoonMoveDirection direction)
-    {
-        PlatoonMoveDirection targetDirection = direction;
-        
-        int directionNum = (int)direction;
-
-        dirList.Clear();
-
-        pathList.Clear();
-        closePathDic.Clear();
-
-        int currentTileX = platoonCommander.tileIdxX;
-        int currentTileY = platoonCommander.tileIdxY;
-
-        SetSearchList();
-
-        while (true)
-        {
-            for (int i = directionNum - 3; i <= directionNum + 3; i++)
-            {
-                int idx = i;
-
-                if (i < 0) idx = i + 8;
-                else if (i > 7) idx = i - 8;
-
-                int offsetX = currentTileX - platoonCommander.tileIdxX;
-                int offsetY = currentTileY - platoonCommander.tileIdxY;
-                
-                if (!DecisionMoveBySearchList((PlatoonMoveDirection)idx, offsetX, offsetY)) continue; // 가능 방향으로 갈 수 없다면 패스
-
-                if ((PlatoonMoveDirection)idx == targetDirection)
-                {
-                    return pathList;
-                }
-
-                Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
-
-                if (tile == null)
-                {
-                    return pathList;
-                }
-
-                if (closePathDic.ContainsKey(tile)) continue; // 지나간 타일이었다면 패스
-
-                Tile targetTile = DecisionTileByDirection(targetDirection, mainGame.GetTileByIdx(currentTileX, currentTileY));
-
-                float distance = Vector3.Distance(new Vector3(targetTile.idxX, targetTile.idxY, 0), new Vector3(tile.idxX, tile.idxY, 0));
-
-                PathStruct dir = new PathStruct();
-                dir.H = distance;
-                dir.dir = (PlatoonMoveDirection)idx;
-                dir.tile = tile;
-                dirList.Add(dir);
-            }
-
-            if (dirList.Count > 0)
-            {
-                List<PathStruct> list = dirList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
-                directionNum = (int)list[0].dir;
-                pathList.Add(list[0].dir); // 가장 빠른 타일 방향
-                closePathDic.Add(list[0].tile, 0);
-                currentTileX = list[0].tile.idxX;
-                currentTileY = list[0].tile.idxY;
-                dirList.Clear();
-            }
-            else
-            {
-                return pathList;
-            }
-        }
-    }
-
-    // 전투 목표에 접근하기 위한 패스파인딩
-    public List<PlatoonMoveDirection> SetPathFindList(PlatoonMoveDirection direction, Tile destinationTile)
-    {
-        int directionNum = (int)direction;
-
-        dirList.Clear();
-
-        pathList.Clear();
-        closePathDic.Clear();
-
-        int currentTileX = platoonCommander.tileIdxX;
-        int currentTileY = platoonCommander.tileIdxY;
-
-        while (true)
-        {
-            for (int i = directionNum - 3; i <= directionNum + 3; i++)
-            {
-                int idx = i;
-
-                if (i < 0) idx = i + 8;
-                else if (i > 7) idx = i - 8;
-
-                if (!DecisionMoveByDirection((PlatoonMoveDirection)idx)) continue; // 가능 방향으로 갈 수 없다면 패스
-
-                Tile tile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(currentTileX, currentTileY));
-
-                Tile targetTile;
-                if (targetPlatoon != null && targetPlatoon.hp <= 0)
-                {
-                    targetTile = mainGame.GetTileByIdx(targetPlatoon.platoonCommander.tileIdxX, targetPlatoon.platoonCommander.tileIdxY);
-                }
-                else
-                { 
-                    targetTile = DecisionTileByDirection(direction, mainGame.GetTileByIdx(currentTileX, currentTileY));
-                }
-
-                if (closePathDic.ContainsKey(tile)) continue; // 지나간 타일이었다면 패스
-
-                if (tile == destinationTile)
-                {
-                    pathList.Add((PlatoonMoveDirection)idx);
-
-                    return pathList;
-                }
-
-                float distance = Vector3.Distance(new Vector3(targetTile.idxX, targetTile.idxY, 0), new Vector3(tile.idxX, tile.idxY, 0));
-
-                PathStruct dir = new PathStruct();
-                dir.H = distance;
-                dir.dir = (PlatoonMoveDirection)idx;
-                dir.tile = tile;
-                dirList.Add(dir);
-            }
-
-            if (dirList.Count > 0)
-            {
-                List<PathStruct> list = dirList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
-                directionNum = (int)list[0].dir;
-                pathList.Add(list[0].dir); // 가장 빠른 타일 방향
-                closePathDic.Add(list[0].tile, 0);
-                currentTileX = list[0].tile.idxX;
-                currentTileY = list[0].tile.idxY;
-                dirList.Clear();
-            }
-            else
-            {
-                return pathList;
             }
         }
     }
@@ -1746,13 +1850,11 @@ public class Platoon : MonoBehaviour
             switch (unitList[i].platoonPos)
             {
                 case UnitPos.LEFT:
-                case UnitPos.LEFT_CENTER:
                     searchListLeft.Add(search);
                     searchListLeftDown.Add(search);
                     searchListLeftUp.Add(search);
                     break;
                 case UnitPos.RIGHT:
-                case UnitPos.RIGHT_CENTER:
                     searchListRight.Add(search);
                     searchListRightDown.Add(search);
                     searchListRightUp.Add(search);
@@ -1799,7 +1901,7 @@ public class Platoon : MonoBehaviour
         }
     }
 
-    public bool DecisionMoveBySearchList(PlatoonMoveDirection direction, int offsetX, int offsetY)
+    public bool DecisionMoveBySearchListForMovePath(PlatoonMoveDirection direction, int offsetX, int offsetY)
     {
         List<SearchArea> searchList = null;
         switch (direction)
@@ -1841,18 +1943,64 @@ public class Platoon : MonoBehaviour
             Tile tile = DecisionTileByDirection(direction, mainGame.GetTileByIdx(tileX, tileY));
 
             if (tile == null) return false;
-            if (tile.isHaveUnit)
+            if (tile.isHaveUnit && tile.haveUnit.platoon != this)
             {
-                if (tile.haveUnit.platoon != null)
+                if (tile.haveUnit.isRed == isRed && tile.haveUnit.platoon.companyNum != companyNum) return false;
+            }
+        }
+
+        return true;
+    }
+
+    public bool DecisionMoveBySearchListForFindAttackMovePath(PlatoonMoveDirection direction, int offsetX, int offsetY, Platoon target = null)
+    {
+        List<SearchArea> searchList = null;
+        switch (direction)
+        {
+            case PlatoonMoveDirection.DIR_LEFT:
+                searchList = searchListLeft;
+                break;
+            case PlatoonMoveDirection.DIR_RIGHT:
+                searchList = searchListRight;
+                break;
+            case PlatoonMoveDirection.DIR_UP:
+                searchList = searchListUp;
+                break;
+            case PlatoonMoveDirection.DIR_DOWN:
+                searchList = searchListDown;
+                break;
+            case PlatoonMoveDirection.DIR_LEFT_DOWN:
+                searchList = searchListLeftDown;
+                break;
+            case PlatoonMoveDirection.DIR_LEFT_UP:
+                searchList = searchListLeftUp;
+                break;
+            case PlatoonMoveDirection.DIR_RIGHT_DOWN:
+                searchList = searchListRightDown;
+                break;
+            case PlatoonMoveDirection.DIR_RIGHT_UP:
+                searchList = searchListRightUp;
+                break;
+        }
+
+        for (int i = 0; i < searchList.Count; i++)
+        {
+            int tileX = searchList[i].tileIdxX + offsetX;
+            int tileY = searchList[i].tileIdxY + offsetY;
+
+            if (tileX < 0 || tileX >= mainGame.tileCountX) return false;
+            if (tileY < 0 || tileY >= mainGame.tileCountY) return false;
+
+            Tile tile = DecisionTileByDirection(direction, mainGame.GetTileByIdx(tileX, tileY));
+
+            if (tile == null) return false;
+            if (tile.isHaveUnit && tile.haveUnit.platoon != this)
+            {
+                if (tile.haveUnit.isRed == isRed) return false;
+                else if (target != null && tile.haveUnit.platoon == target)
                 {
-                    if (tile.haveUnit.platoon.companyNum != companyNum)
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    return false;
+                    isTargetFind = true;
+                    return true;
                 }
             }
         }
@@ -1872,31 +2020,11 @@ public class Platoon : MonoBehaviour
         }
     }
 
-    // 해당 소대가 중대 패스파인딩을 해야하는지 알아봅니다.
-    public bool NeedsToPathFind()
-    {
-        if (targetPlatoon == null)
-        {
-            targetPlatoon = mainGame.GetCompanyTarget(companyNum, isRed);
-            if (targetPlatoon != null && targetPlatoon.hp > 0)
-            {
-                platoonStatus = PlatoonStatus.UNIT_FIND_MOVE;
-                return false;
-            }
-        }
-
-        platoonStatus = PlatoonStatus.UNIT_MOVE;
-
-        PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
-
-        if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
-
-        return !DecisionMoveByDirection(direction, true);
-    }
-
     public bool NeedsToPathFind(PlatoonPathFind pathFind)
     {
         PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_DEFAULT;
+
+        bool needObjCheck = true;
 
         switch (pathFind)
         {
@@ -1911,18 +2039,29 @@ public class Platoon : MonoBehaviour
                 direction = DecisionDirectionToCompnayTarget(companyTarget);
                 break;
             case PlatoonPathFind.ATTACK_MOVE_PATH_FIND:
+                if (platoonPath.Count > 0)
+                {
+                    PlatoonTargetIdxX = platoonPath[0].tile.idxX;
+                    PlatoonTargetIdxY = platoonPath[0].tile.idxY;
+                    direction = PlatoonDirectionDecision();
+
+                    if (DecisionMoveByDirection(direction)) return false;
+                }
+                else
+                {
+                    direction = DecisionDirectionToCompnayTarget(targetPlatoon);
+                    needObjCheck = false;
+                }
                 platoonStatus = PlatoonStatus.UNIT_ATTACK_MOVE;
-                direction = DecisionDirectionToCompnayTarget(targetPlatoon);
                 break;
         }
 
-        return !DecisionMoveByDirection(direction, true);
+        return !DecisionMoveByDirection(direction, needObjCheck);
     }
 
     public void SetPlatoonPath(List<PathStruct> companyPath)
     {
-        platoonPath = companyPath;
-
+        platoonPath = new List<PathStruct>(companyPath);
         List<PathStruct> list = new List<PathStruct>(companyPath);
 
         // 현재 위치가 길찾기 루트내에 위치한지 체크, 또는 X위치가 같은지 체크하여 길찾기 루트를 수정
@@ -1964,22 +2103,22 @@ public class Platoon : MonoBehaviour
             tempList.AddRange(list);
 
             platoonPath = tempList;
+        }
+    }
 
-            /*
-            // 이 로직은 연구가 좀 필요하겠는데?;;
-            PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
-            if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
+    public void SetPlatoonAttackPath(List<PathStruct> companyPath)
+    {
+        platoonPath.Clear();
 
-            if (DecisionMoveByDirection(direction))
-            {
-                List<PathStruct> tempPlatoonList = SetCompanyPathFindListToDirection(direction);
+        if (companyPath.Count <= 0 && companyCommander.platoonStatus != PlatoonStatus.UNIT_ATTACK) return; // 부대장 길찾기 루트가 나오지 않았다는 뜻
 
-                if (tempPlatoonList.Count() < tempList.Count())
-                {
-                    platoonPath = tempPlatoonList;
-                }
-            }
-            */
+        if (targetPlatoon == null) return; // 아직 전투 범위 안에 타겟이 없다는 뜻
+
+        platoonPath = SetPlatoonPathFindListToEnemyPlatoon(targetPlatoon); // 소대별 각각 패스파인딩
+
+        if (platoonPath.Count <= 0)
+        {
+            SetPlatoonPath(companyPath);
         }
     }
 
@@ -1991,40 +2130,41 @@ public class Platoon : MonoBehaviour
         return PlatoonDirectionDecision();
     }
 
-    public bool CheckFindMovePath(PlatoonMoveDirection direction)
-    {
-        return DecisionMoveByDirection(direction, true);
-    }
-
     public void SetCompanyPathList(PlatoonPathFind pathFind)
     {
         switch (pathFind)
         {
             case PlatoonPathFind.MOVE_PATH_FIND:
                 PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
-
                 if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
-
                 platoonPath = SetCompanyPathFindListToDirection(direction);
                 break;
             case PlatoonPathFind.FIND_MOVE_PATH_FIND:
                 Platoon target = mainGame.GetCompanyTarget(companyNum, isRed);
-                Tile tile = mainGame.GetTileByIdx(target.platoonCommander.tileIdxX, target.platoonCommander.tileIdxY);
-                platoonPath = SetCompanyPathFindListToTile(tile);
-                
+                platoonPath = SetCompanyPathFindListToEnemyPlatoon(target);
                 break;
             case PlatoonPathFind.ATTACK_MOVE_PATH_FIND:
-                Tile targetTile = mainGame.GetTileByIdx(targetPlatoon.platoonCommander.tileIdxX, targetPlatoon.platoonCommander.tileIdxY);
-                platoonPath = SetCompanyPathFindListToTile(targetTile);
+                if (targetPlatoon == null)
+                {
+                    Platoon companyTarget = mainGame.GetCompanyTarget(companyNum, isRed);
+                    platoonPath = SetCompanyPathFindListToEnemyPlatoon(companyTarget);
+                    pathFind = PlatoonPathFind.FIND_MOVE_PATH_FIND;
+                }
+                else
+                {
+                    platoonPath = SetPlatoonPathFindListToEnemyPlatoon(targetPlatoon);
+                }
                 break;
         }
 
-        mainGame.SetCompanyPath(companyNum, isRed, platoonPath);
+        newPathFind = false;
+
+        mainGame.SetCompanyMovePath(companyNum, isRed, platoonPath, pathFind);
     }
 
     public void CheckBattleArea(List<Company> enemyCompanyList)
     {
-        List<PathStruct> sortList = new List<PathStruct>();
+        battleAreaList.Clear();
 
         for (int i = 0; i < enemyCompanyList.Count; i++)
         {
@@ -2049,16 +2189,90 @@ public class Platoon : MonoBehaviour
                     PathStruct path = new PathStruct();
                     path.platoon = enemyPlatoon[j];
                     path.H = distance;
-                    sortList.Add(path);
+                    battleAreaList.Add(path);
                 }
             }
         }
 
-        if (sortList.Count > 0)
+        if (battleAreaList.Count > 0)
         {
-            List<PathStruct> list = sortList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
-            targetPlatoon = list[0].platoon;
-            platoonStatus = PlatoonStatus.UNIT_ATTACK_MOVE;
+            List<PathStruct> list = battleAreaList.OrderBy(i => i.H).ToList(); // 타일의 H 거리값 정렬
+
+            Unit enemy = CheckEnemyTile();
+
+            if (enemy != null)
+            {
+                targetPlatoon = enemy.platoon;
+                platoonStatus = PlatoonStatus.UNIT_ATTACK_READY;
+                Debug.Log("공격준비~3 : " + isRed + "팀/" + companyNum);
+            }
+            else
+            {
+                targetPlatoon = list[0].platoon;
+                platoonStatus = PlatoonStatus.UNIT_ATTACK_MOVE;
+            }
         }
+        else
+        {
+            targetPlatoon = null;
+            platoonStatus = PlatoonStatus.UNIT_IDLE;
+        }
+    }
+
+    public Unit CheckTargetNearBy(PlatoonMoveDirection direction, Tile tile)
+    {
+        Unit target = null;
+
+        Tile targetTile = DecisionTileByDirection(direction, tile);
+
+        if (targetTile != null && targetTile.isHaveUnit)
+        {
+            if (targetTile.haveUnit.isRed != isRed)
+            {
+                target = targetTile.haveUnit.platoonCommander;
+            }
+        }
+
+        return target;
+    }
+
+    Unit GetUnitByPlatoonPos(UnitPos pos)
+    {
+        for (int i = 0; i < unitList.Count; i++)
+        {
+            if (unitList[i].platoonPos == pos)
+            {
+                return unitList[i];
+            }
+        }
+
+        return null;
+    }
+
+    public void SetPlatoonCenterPos()
+    {
+        Unit leftUpUnit = GetUnitByPlatoonPos(UnitPos.LEFT_UP);
+        Unit rightDownUnit = GetUnitByPlatoonPos(UnitPos.RIGHT_DOWN);
+
+        if (platoonLine <= 1)
+        {
+            if (leftUpUnit == null) leftUpUnit = GetUnitByPlatoonPos(UnitPos.RIGHT_UP);
+            if (rightDownUnit == null) rightDownUnit = GetUnitByPlatoonPos(UnitPos.LEFT_DOWN);
+        }
+
+        if (leftUpUnit == null || rightDownUnit == null)
+        {
+            centerPosX = platoonCommander.tileIdxX;
+            centerPosY = platoonCommander.tileIdxY;
+            return;
+        }
+
+        int left = leftUpUnit.tileIdxX;
+        int right = rightDownUnit.tileIdxX;
+        int up = leftUpUnit.tileIdxY;
+        int down = rightDownUnit.tileIdxY;
+
+        centerPosX = left + ((right - left) / 2.0f);
+        centerPosY = down + ((up - down) / 2.0f);
     }
 }

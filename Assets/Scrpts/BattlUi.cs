@@ -46,8 +46,8 @@ public class BattlUi : MonoBehaviour
         for (int i = 0; i < 10; i++)
         {
             PlatoonMos mos = PlatoonMos.FOOTMAN;
-            int size = 1000;
-            bool isEmpty = true;
+            int size = 50000;
+            bool isEmpty = false;
 
             string ketStr = "mos_" + i;
             if (PlayerPrefs.HasKey(ketStr))
@@ -79,7 +79,23 @@ public class BattlUi : MonoBehaviour
             }
             else
             {
-                PlayerPrefs.SetInt(ketStr, 0);
+                if (i < 2)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Infantry";
+                    mos = PlatoonMos.FOOTMAN;
+                    PlayerPrefs.SetInt(ketStr, 0);
+                }
+                else if (i < 5)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Cavalry";
+                    mos = PlatoonMos.KNIGHT;
+                    PlayerPrefs.SetInt(ketStr, 3);
+                }
+                // else if (i < )
             }
 
             ketStr = "size_" + i;
@@ -89,7 +105,7 @@ public class BattlUi : MonoBehaviour
             }
             else
             {
-                PlayerPrefs.SetInt(ketStr, 1000);
+                PlayerPrefs.SetInt(ketStr, 50000);
             }
 
             ketStr = "empty_" + i;
@@ -106,7 +122,7 @@ public class BattlUi : MonoBehaviour
             }
             else
             {
-                PlayerPrefs.SetString(ketStr, "true");
+                PlayerPrefs.SetString(ketStr, "false");
             }
 
             TroopSelect troop = new TroopSelect();

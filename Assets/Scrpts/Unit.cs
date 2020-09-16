@@ -11,8 +11,6 @@ public enum UnitPos
     RIGHT_UP = 0, // 우측 상단 모서리
     RIGHT_DOWN, // 우측 하단 모서리
     CENTER, // 중앙
-    RIGHT_CENTER, // 우측 중앙 (레드팀 소대장 유닛)
-    LEFT_CENTER, // 좌측 중앙 (블루팀 소대장 유닛)
     LEFT_UP, // 좌측 상단 모서리
     LEFT_DOWN, // 좌측 하단 모서리
     RIGHT, // 우측면 외곽
