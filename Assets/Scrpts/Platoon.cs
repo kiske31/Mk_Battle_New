@@ -7,6 +7,9 @@ using System.Linq;
 using System;
 using UnityEngine.UI;
 using DG.Tweening;
+using UnityEngine.EventSystems;
+//using UnityEditor.Experimental.GraphView;
+//using UnityEditorInternal;
 
 // 소대 크기
 public enum PlatoonSize
@@ -74,6 +77,16 @@ public struct SearchArea
     public int tileIdxX;
     public int tileIdxY;
     public UnitPos pos;
+}
+
+public struct JPS_Struct
+{
+    public float g; // 현재 부터 타일까지 가중치
+    public float h; // 타일부터 목표까지 가중치
+    public float f; // g + h
+
+    public Tile pTile; // 부모 타일
+    public Tile tile;
 }
 
 public class Platoon : MonoBehaviour
@@ -177,6 +190,11 @@ public class Platoon : MonoBehaviour
     List<SearchArea> searchListRightUp;
     List<SearchArea> searchListRightDown;
 
+    List<JPS_Struct> openList;
+    List<JPS_Struct> closeList;
+
+    bool finishJPS;
+
     // 소대 이닛 (메인게임, 병종, 소대의 크기, 시작 타일, 소대번호, 레드팀인가?)
     public void PlatoonInit(MainGame mainGame, PlatoonMos PlatoonMos, PlatoonSize num, int armyNum , Tile startTile, int platoonNum, int companyNum, bool isRed= true)
     {
@@ -197,6 +215,9 @@ public class Platoon : MonoBehaviour
         closeTileDic = new Dictionary<Tile, int>();
         closePathDic = new Dictionary<Tile, int>();
         battleAreaList = new List<PathStruct>();
+
+        openList = new List<JPS_Struct>();
+        closeList = new List<JPS_Struct>();
 
         string prefabName = "Red"; // 병사 오브젝트 프리펩
         int platoonCount = (int)num; // 배치될 병사의 수
@@ -765,6 +786,62 @@ public class Platoon : MonoBehaviour
         }
 
         return platoonMoveDirection;
+    }
+
+    public PlatoonMoveDirection DirectionDecisionToTarget(Tile currentTile, Tile targetTile, bool backDirection = false)
+    {
+        PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
+
+        // 타겟 - 현 좌표 
+        Vector3 target = new Vector3(targetTile.idxX, targetTile.idxY, 0) - new Vector3(currentTile.idxX, currentTile.idxY, 0);
+
+        // 180 ~ -180 degree
+        float angle = Mathf.Atan2(target.y, target.x) * Mathf.Rad2Deg;
+
+        // Debug.Log("소대와 타겟의 앵글 : " + angle);
+
+        if ((0 <= angle && angle < 22.5f) || (-0.1f >= angle && angle > -22.5f))
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_RIGHT;
+            else direction = PlatoonMoveDirection.DIR_LEFT;
+        }
+        else if (angle >= 22.5f && angle < 67.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_RIGHT_UP;
+            else direction = PlatoonMoveDirection.DIR_LEFT_DOWN;
+        }
+        else if (angle >= 67.5f && angle < 112.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_UP;
+            else direction = PlatoonMoveDirection.DIR_DOWN;
+        }
+        else if (angle >= 112.5f && angle < 157.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_LEFT_UP;
+            else direction = PlatoonMoveDirection.DIR_RIGHT_DOWN;
+        }
+        else if ((180 >= angle && angle >= 157.5f) || (-180.0f <= angle && angle <= -157.5f))
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_LEFT;
+            else direction = PlatoonMoveDirection.DIR_RIGHT;
+        }
+        else if (angle <= -112.5f && angle > -157.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_LEFT_DOWN;
+            else direction = PlatoonMoveDirection.DIR_RIGHT_UP;
+        }
+        else if (angle <= -67.5f && angle > -112.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_DOWN;
+            else direction = PlatoonMoveDirection.DIR_UP;
+        }
+        else if (angle <= -22.5f && angle > -67.5f)
+        {
+            if (!backDirection) direction = PlatoonMoveDirection.DIR_RIGHT_DOWN;
+            else direction = PlatoonMoveDirection.DIR_LEFT_UP;
+        }
+
+        return direction;
     }
 
     public bool DecisionMoveByDirection(PlatoonMoveDirection direction, bool usePathFind = false)
@@ -2138,6 +2215,7 @@ public class Platoon : MonoBehaviour
                 PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
                 if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
                 platoonPath = SetCompanyPathFindListToDirection(direction);
+                // JumpPointSearch(mainGame.GetTileByIdx(mainGame.tileCountX - 1, platoonCommander.tileIdxY));
                 break;
             case PlatoonPathFind.FIND_MOVE_PATH_FIND:
                 Platoon target = mainGame.GetCompanyTarget(companyNum, isRed);
@@ -2274,5 +2352,200 @@ public class Platoon : MonoBehaviour
 
         centerPosX = left + ((right - left) / 2.0f);
         centerPosY = down + ((up - down) / 2.0f);
+    }
+
+    public void JumpPointSearch(Tile targetTile, bool useAttackPath = false)
+    {
+        finishJPS = false;
+
+        openList.Clear();
+        closeList.Clear();
+
+        Tile currentTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
+
+        JPS_Struct start = new JPS_Struct();
+        start.f = 0;
+        start.g = 0;
+        start.h = 0;
+        start.pTile = null;
+        start.tile = currentTile;
+
+        openList.Add(start);
+
+        List<JPS_Struct> list = openList.OrderBy(i => i.f).ToList(); // 타일의 H 거리값 정렬
+
+        JPS_Struct currentNode = list[0];
+
+        closeList.Add(currentNode);
+
+        openList.RemoveAt(0);
+
+        // if (finishJPS) break;
+
+        int backDirection = 999;
+
+        if (currentNode.pTile != null) backDirection = (int)DirectionDecisionToTarget(currentNode.tile, currentNode.pTile);
+
+        for (int i = 0; i < 8; i++)
+        {
+            if (i == backDirection) continue;
+            PlatoonMoveDirection direciton = (PlatoonMoveDirection)i;
+
+            SearchJumpPointByDirection(direciton, currentNode.tile, targetTile, useAttackPath);
+        }
+
+        /*
+        while (true)
+        {
+            List<JPS_Struct> list = openList.OrderBy(i => i.f).ToList(); // 타일의 H 거리값 정렬
+
+            JPS_Struct currentNode = list[0];
+
+            closeList.Add(currentNode);
+
+            openList.RemoveAt(0);
+
+            if (finishJPS) break;
+
+            int backDirection = 999;
+
+            if (currentNode.pTile != null) backDirection = (int)DirectionDecisionToTarget(currentNode.tile, currentNode.pTile);
+
+            for (int i = 0; i < 8; i++)
+            {
+                if (i == backDirection) continue;
+
+                SearchJumpPointByDirection((PlatoonMoveDirection)i, currentNode.tile, targetTile, useAttackPath);
+            }
+        }
+        */
+
+        Debug.Log("Test");
+
+
+    }
+
+    public void SearchJumpPointByDirection(PlatoonMoveDirection direction, Tile current, Tile target, bool useAttackPath = false)
+    {
+        int forwardNum = (int)direction;
+
+        int offsetX = 0;
+        int offsetY = 0;
+
+        int idx = 0;
+        int closeCount = 0;
+
+        Tile tempTile = null;
+        Tile startTile = current;
+
+        int friendlyXLeft = platoonCommander.tileIdxX - (battleAreaX + 4);
+        int friendlyXRight = platoonCommander.tileIdxX + battleAreaX;
+        int friendlyYUp = platoonCommander.tileIdxY + battleAreaY + 2;
+        int friendlyYDown = platoonCommander.tileIdxY - battleAreaY - 2;
+
+        /*
+        DIR_RIGHT = 0, // 우방향
+        DIR_RIGHT_DOWN, // 우아래 방향
+        DIR_DOWN, // 아래 방향
+        DIR_LEFT_DOWN, // 좌아래 방향
+        DIR_LEFT, // 좌방향
+        DIR_LEFT_UP, // 좌상 방향
+        DIR_UP, // 윗 방향
+        DIR_RIGHT_UP, // 우상 방향
+        DIR_DEFAULT // 방향 없음. 보통 제자리?
+        */
+
+        SetSearchList();
+
+        while (closeCount == 0)
+        {
+            for (int i = forwardNum - 1; i <= forwardNum + 1; i++)
+            {
+                idx = i;
+                if (idx < 0) idx += 8;
+                else if (idx > 7) idx -= 8;
+
+                if (useAttackPath)
+                {
+                    if (offsetX < friendlyXLeft)
+                    {
+                        closeCount++;
+                        continue;
+                    }
+                    else if (offsetY > friendlyXRight)
+                    {
+                        closeCount++;
+                        continue;
+                    }
+                    else if (offsetX < friendlyYDown)
+                    {
+                        closeCount++;
+                        continue;
+                    }
+                    else if (offsetY > friendlyYUp)
+                    {
+                        closeCount++;
+                        continue;
+                    }
+
+                    if (!DecisionMoveBySearchListForFindAttackMovePath((PlatoonMoveDirection)idx, offsetX, offsetY))
+                    {
+                        closeCount++;
+                        continue;
+                    }
+                }
+                else
+                {
+                    if (!DecisionMoveBySearchListForMovePath((PlatoonMoveDirection)idx, offsetX, offsetY))
+                    {
+                        closeCount++;
+                        continue;
+                    }
+                }
+
+                Tile moveTile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(startTile.idxX + offsetX, startTile.idxY + offsetY));
+
+                if (moveTile == null)
+                {
+                    closeCount++;
+                    continue;
+                }
+
+                if ((PlatoonMoveDirection)idx == direction)
+                {
+                    tempTile = moveTile;
+                }
+
+                if (moveTile == target)
+                {
+                    finishJPS = true;
+                    return;
+                }
+            }
+
+            if (closeCount >= 3)
+            {
+                // 데드 엔드 (갈곳이 없는 막힌 곳)
+                return;
+            }
+            else if (closeCount > 0)
+            {
+                // 이곳이 점프 포인트가 됩니다.
+                JPS_Struct node = new JPS_Struct();
+                node.pTile = current;
+                node.g = Vector3.Distance(new Vector3(tempTile.idxX, tempTile.idxY), new Vector3(current.idxX, current.idxY));
+                node.h = Vector3.Distance(new Vector3(target.idxX, target.idxY), new Vector3(tempTile.idxX, tempTile.idxY));
+                node.f = node.g + node.h;
+                node.tile = tempTile;
+                openList.Add(node);
+                return;
+            }
+            else
+            {
+                // 길이 전부 열려있어서 계속 서치합니다.
+                offsetX = tempTile.idxX - current.idxX;
+                offsetY = tempTile.idxY - current.idxY;
+            }
+        }
     }
 }
