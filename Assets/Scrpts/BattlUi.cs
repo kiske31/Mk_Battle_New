@@ -95,7 +95,38 @@ public class BattlUi : MonoBehaviour
                     mos = PlatoonMos.KNIGHT;
                     PlayerPrefs.SetInt(ketStr, 3);
                 }
-                // else if (i < )
+                else if (i == 5)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Infantry";
+                    mos = PlatoonMos.FOOTMAN;
+                    PlayerPrefs.SetInt(ketStr, 0);
+                }
+                else if (i == 6)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Bow man";
+                    mos = PlatoonMos.ARCHER;
+                    PlayerPrefs.SetInt(ketStr, 2);
+                }
+                else if (i == 7)
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Cavalry";
+                    mos = PlatoonMos.KNIGHT;
+                    PlayerPrefs.SetInt(ketStr, 3);
+                }
+                else
+                {
+                    Button button = mosButtonList[i];
+                    Text btnTxt = button.GetComponentInChildren<Text>();
+                    btnTxt.text = "Spear man";
+                    mos = PlatoonMos.SPEARMAN;
+                    PlayerPrefs.SetInt(ketStr, 1);
+                }
             }
 
             ketStr = "size_" + i;

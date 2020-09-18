@@ -118,9 +118,9 @@ public class MainGame : MonoBehaviour
 
     public void GameStart(Dictionary<int, TroopSelect> troopSelectDic)
     {
-#if UNITY_EDITOR
+//#if UNITY_EDITOR
         Camera.main.orthographicSize = 10;
-#endif
+//#endif
 
         mainCamera.transform.position = new Vector3(camPos.x, camPos.y, mainCamera.transform.position.z);
         turnText.text = "Turn : " + turnCount;
@@ -362,7 +362,6 @@ public class MainGame : MonoBehaviour
 
     void OnCheckMoveProcess(PlatoonMoveSpeed speed)
     {
-        /*
         for (int i = 0; i < redCompanyList.Count; i++)
         {
             if (redCompanyList[i].speed != speed) continue;
@@ -376,7 +375,6 @@ public class MainGame : MonoBehaviour
 
             CalcMoveProcess(blueCompanyList[i]);
         }
-        */
 
         OnMoveRedTeam(speed);
     }
@@ -1652,6 +1650,19 @@ public class MainGame : MonoBehaviour
         isDamgeReduce = value;
     }
 
+    public void SetTestFind(int companyNum, bool isRed)
+    {
+        List<Company> companyList;
+
+        if (isRed) companyList = redCompanyList;
+        else companyList = blueCompanyList;
+
+        for (int i = 0; i < companyList[companyNum].platoonList.Count; i++)
+        {
+            companyList[companyNum].platoonList[i].newPathFind = false;
+        }
+    }
+
     // 패스파인딩 루트 리스트를 세팅
     public void SetCompanyMovePath(int companyNum, bool isRed, List<PathStruct> pathList, PlatoonPathFind pathFind)
     {
@@ -1675,8 +1686,6 @@ public class MainGame : MonoBehaviour
             if (pathFind == PlatoonPathFind.ATTACK_MOVE_PATH_FIND) company.platoonList[i].SetPlatoonAttackPath(company.pathList);
             else company.platoonList[i].SetPlatoonPath(company.pathList);
         }
-
-        CalcMoveProcess(company);
     }
 
     public void CalcMoveProcess(Company company)

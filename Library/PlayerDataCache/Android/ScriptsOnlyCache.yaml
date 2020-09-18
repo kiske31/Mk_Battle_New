@@ -618,4 +618,4 @@ ScriptsOnlyBuild:
   platform: 13
   scenePathNames:
   - Assets/Scenes/BattleScene.unity
-  playerPath: C:/Users/kiske/Desktop/test.apk
+  playerPath: C:/Users/admin/Desktop/test.apk

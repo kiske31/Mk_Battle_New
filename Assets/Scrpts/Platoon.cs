@@ -87,6 +87,8 @@ public struct JPS_Struct
 
     public Tile pTile; // 부모 타일
     public Tile tile;
+
+    public PlatoonMoveDirection direciton;
 }
 
 public class Platoon : MonoBehaviour
@@ -190,8 +192,8 @@ public class Platoon : MonoBehaviour
     List<SearchArea> searchListRightUp;
     List<SearchArea> searchListRightDown;
 
-    List<JPS_Struct> openList;
-    List<JPS_Struct> closeList;
+    Dictionary<Tile, JPS_Struct> openDic;
+    Dictionary<Tile, JPS_Struct> closeDic;
 
     bool finishJPS;
 
@@ -216,8 +218,8 @@ public class Platoon : MonoBehaviour
         closePathDic = new Dictionary<Tile, int>();
         battleAreaList = new List<PathStruct>();
 
-        openList = new List<JPS_Struct>();
-        closeList = new List<JPS_Struct>();
+        openDic = new Dictionary<Tile, JPS_Struct>();
+        closeDic = new Dictionary<Tile, JPS_Struct>();
 
         string prefabName = "Red"; // 병사 오브젝트 프리펩
         int platoonCount = (int)num; // 배치될 병사의 수
@@ -1021,38 +1023,41 @@ public class Platoon : MonoBehaviour
         switch (direction)
         {
             case PlatoonMoveDirection.DIR_DOWN:
-                if (tile.idxY > 0) addIdxY = -1;
+                addIdxY = -1;
                 break;
             case PlatoonMoveDirection.DIR_UP:
-                if (tile.idxY < mainGame.tileCountY - 1) addIdxY = 1;
+                addIdxY = 1;
                 break;
             case PlatoonMoveDirection.DIR_LEFT:
-                if (tile.idxX > 0) addIdxX = -1;
+                addIdxX = -1;
                 break;
             case PlatoonMoveDirection.DIR_RIGHT:
-                if (tile.idxX < mainGame.tileCountX - 1) addIdxX = 1;
+                addIdxX = 1;
                 break;
             case PlatoonMoveDirection.DIR_LEFT_DOWN:
-                if (tile.idxX > 0) addIdxX = -1;
-                if (tile.idxY > 0) addIdxY = -1;
+                addIdxX = -1;
+                addIdxY = -1;
                 break;
             case PlatoonMoveDirection.DIR_LEFT_UP:
-                if (tile.idxX > 0) addIdxX = -1;
-                if (tile.idxY < mainGame.tileCountY - 1) addIdxY = 1;
+                addIdxX = -1;
+                addIdxY = 1;
                 break;
             case PlatoonMoveDirection.DIR_RIGHT_UP:
-                if (tile.idxX < mainGame.tileCountX - 1) addIdxX = 1;
-                if (tile.idxY < mainGame.tileCountY - 1) addIdxY = 1;
+                 addIdxX = 1;
+                 addIdxY = 1;
                 break;
             case PlatoonMoveDirection.DIR_RIGHT_DOWN:
-                if (tile.idxX < mainGame.tileCountX - 1) addIdxX = 1;
-                if (tile.idxY > 0) addIdxY = -1;
+                addIdxX = 1;
+                addIdxY = -1;
                 break;
             case PlatoonMoveDirection.DIR_DEFAULT:
                 break;
         }
 
-        if (addIdxX == 0 && addIdxY == 0) return null;
+        if (tile.idxX + addIdxX < 0) return null;
+        if (tile.idxX + addIdxX >= mainGame.tileCountX) return null;
+        if (tile.idxY + addIdxY < 0) return null;
+        if (tile.idxY + addIdxY >= mainGame.tileCountY) return null;
 
         moveTile = mainGame.GetTileByIdx(tile.idxX + addIdxX, tile.idxY + addIdxY);
 
@@ -1531,6 +1536,13 @@ public class Platoon : MonoBehaviour
         }
     }
 
+    public void Update()
+    {
+        if (companyCommander == this && companyNum == 0 && Input.GetKeyDown(KeyCode.Space))
+        {
+             JumpPointSearch(mainGame.GetTileByIdx(mainGame.tileCountX - 3, platoonCommander.tileIdxY));
+        }
+    }
     public void LateUpdate()
     {
         if (companyText != null)
@@ -2004,7 +2016,7 @@ public class Platoon : MonoBehaviour
             case PlatoonMoveDirection.DIR_RIGHT_DOWN:
                 searchList = searchListRightDown;
                 break;
-            case PlatoonMoveDirection.DIR_RIGHT_UP:
+            case PlatoonMoveDirection. DIR_RIGHT_UP:
                 searchList = searchListRightUp;
                 break;
         }
@@ -2163,6 +2175,8 @@ public class Platoon : MonoBehaviour
             }
         }
 
+        newPathFind = false;
+
         if (pathIdx != 0)
         {
             list.RemoveRange(0, pathIdx + 1);
@@ -2185,11 +2199,13 @@ public class Platoon : MonoBehaviour
 
     public void SetPlatoonAttackPath(List<PathStruct> companyPath)
     {
-        platoonPath.Clear();
-
-        if (companyPath.Count <= 0 && companyCommander.platoonStatus != PlatoonStatus.UNIT_ATTACK) return; // 부대장 길찾기 루트가 나오지 않았다는 뜻
+        if (companyPath.Count <= 0 && companyCommander.platoonStatus != PlatoonStatus.UNIT_ATTACK && companyCommander.platoonStatus != PlatoonStatus.UNIT_ATTACK_READY) return; // 부대장 길찾기 루트가 나오지 않았다는 뜻
 
         if (targetPlatoon == null) return; // 아직 전투 범위 안에 타겟이 없다는 뜻
+
+        newPathFind = false;
+
+        platoonPath.Clear();
 
         platoonPath = SetPlatoonPathFindListToEnemyPlatoon(targetPlatoon); // 소대별 각각 패스파인딩
 
@@ -2209,13 +2225,19 @@ public class Platoon : MonoBehaviour
 
     public void SetCompanyPathList(PlatoonPathFind pathFind)
     {
+        newPathFind = false;
+
         switch (pathFind)
         {
             case PlatoonPathFind.MOVE_PATH_FIND:
                 PlatoonMoveDirection direction = PlatoonMoveDirection.DIR_LEFT;
                 if (isRed) direction = PlatoonMoveDirection.DIR_RIGHT;
-                platoonPath = SetCompanyPathFindListToDirection(direction);
-                // JumpPointSearch(mainGame.GetTileByIdx(mainGame.tileCountX - 1, platoonCommander.tileIdxY));
+                // platoonPath = SetCompanyPathFindListToDirection(direction);
+                
+                if (companyCommander == this && companyNum == 0)
+                {
+                    JumpPointSearch(mainGame.GetTileByIdx(mainGame.tileCountX - 3, platoonCommander.tileIdxY));
+                }
                 break;
             case PlatoonPathFind.FIND_MOVE_PATH_FIND:
                 Platoon target = mainGame.GetCompanyTarget(companyNum, isRed);
@@ -2235,9 +2257,9 @@ public class Platoon : MonoBehaviour
                 break;
         }
 
-        newPathFind = false;
+        mainGame.SetTestFind(companyNum, isRed);
 
-        mainGame.SetCompanyMovePath(companyNum, isRed, platoonPath, pathFind);
+        // mainGame.SetCompanyMovePath(companyNum, isRed, platoonPath, pathFind);
     }
 
     public void CheckBattleArea(List<Company> enemyCompanyList)
@@ -2358,8 +2380,8 @@ public class Platoon : MonoBehaviour
     {
         finishJPS = false;
 
-        openList.Clear();
-        closeList.Clear();
+        openDic.Clear();
+        closeDic.Clear();
 
         Tile currentTile = mainGame.GetTileByIdx(platoonCommander.tileIdxX, platoonCommander.tileIdxY);
 
@@ -2368,64 +2390,57 @@ public class Platoon : MonoBehaviour
         start.g = 0;
         start.h = 0;
         start.pTile = null;
+        start.direciton = PlatoonMoveDirection.DIR_DEFAULT;
         start.tile = currentTile;
 
-        openList.Add(start);
+        openDic.Add(currentTile, start);
 
-        List<JPS_Struct> list = openList.OrderBy(i => i.f).ToList(); // 타일의 H 거리값 정렬
+        int Count = 0;
 
-        JPS_Struct currentNode = list[0];
-
-        closeList.Add(currentNode);
-
-        openList.RemoveAt(0);
-
-        // if (finishJPS) break;
-
-        int backDirection = 999;
-
-        if (currentNode.pTile != null) backDirection = (int)DirectionDecisionToTarget(currentNode.tile, currentNode.pTile);
-
-        for (int i = 0; i < 8; i++)
-        {
-            if (i == backDirection) continue;
-            PlatoonMoveDirection direciton = (PlatoonMoveDirection)i;
-
-            SearchJumpPointByDirection(direciton, currentNode.tile, targetTile, useAttackPath);
-        }
-
-        /*
         while (true)
         {
-            List<JPS_Struct> list = openList.OrderBy(i => i.f).ToList(); // 타일의 H 거리값 정렬
+            openDic = openDic.OrderBy(i => i.Value.f).ToDictionary(pair => pair.Key, pair => pair.Value); // 타일의 H 거리값 정렬
 
-            JPS_Struct currentNode = list[0];
+            JPS_Struct currentNode = openDic.FirstOrDefault().Value;
 
-            closeList.Add(currentNode);
+            if (closeDic.ContainsKey(currentNode.tile))
+            {
+                int test = 0;
+            }
+             else closeDic.Add(currentNode.tile, currentNode);
 
-            openList.RemoveAt(0);
+            openDic.Clear();
 
-            if (finishJPS) break;
+            if (currentNode.tile == targetTile)
+            {
+                //openList.Clear();
+                break;
+            }
 
-            int backDirection = 999;
+            openDic.Remove(currentNode.tile);
 
-            if (currentNode.pTile != null) backDirection = (int)DirectionDecisionToTarget(currentNode.tile, currentNode.pTile);
+            Count++;
+            Debug.Log("테스트 : " + Count);
+
+            PlatoonMoveDirection backDirection = PlatoonMoveDirection.DIR_DEFAULT;
+
+            if (currentNode.pTile != null) backDirection = DirectionDecisionToTarget(currentNode.tile, currentNode.pTile);
 
             for (int i = 0; i < 8; i++)
             {
-                if (i == backDirection) continue;
+                if (i == (int)backDirection) continue;
+                PlatoonMoveDirection direciton = (PlatoonMoveDirection)i;
 
-                SearchJumpPointByDirection((PlatoonMoveDirection)i, currentNode.tile, targetTile, useAttackPath);
+                SearchJumpPointByDirection(direciton, currentNode.tile, targetTile, backDirection, useAttackPath);
             }
         }
-        */
 
-        Debug.Log("Test");
+         Debug.Log("Test");
 
 
     }
 
-    public void SearchJumpPointByDirection(PlatoonMoveDirection direction, Tile current, Tile target, bool useAttackPath = false)
+    public void SearchJumpPointByDirection(PlatoonMoveDirection direction, Tile current, Tile target, PlatoonMoveDirection backDirection, bool useAttackPath = false)
     {
         int forwardNum = (int)direction;
 
@@ -2435,8 +2450,8 @@ public class Platoon : MonoBehaviour
         int idx = 0;
         int closeCount = 0;
 
-        Tile tempTile = null;
         Tile startTile = current;
+        Tile currentTile = startTile;
 
         int friendlyXLeft = platoonCommander.tileIdxX - (battleAreaX + 4);
         int friendlyXRight = platoonCommander.tileIdxX + battleAreaX;
@@ -2457,7 +2472,10 @@ public class Platoon : MonoBehaviour
 
         SetSearchList();
 
-        while (closeCount == 0)
+        List<JPS_Struct> checkList = new List<JPS_Struct>();
+
+
+        while (checkList.Count == 0)
         {
             for (int i = forwardNum - 1; i <= forwardNum + 1; i++)
             {
@@ -2465,32 +2483,29 @@ public class Platoon : MonoBehaviour
                 if (idx < 0) idx += 8;
                 else if (idx > 7) idx -= 8;
 
+                if ((int)backDirection == idx) continue;
+
                 if (useAttackPath)
                 {
                     if (offsetX < friendlyXLeft)
                     {
-                        closeCount++;
                         continue;
                     }
                     else if (offsetY > friendlyXRight)
                     {
-                        closeCount++;
                         continue;
                     }
                     else if (offsetX < friendlyYDown)
                     {
-                        closeCount++;
                         continue;
                     }
                     else if (offsetY > friendlyYUp)
                     {
-                        closeCount++;
                         continue;
                     }
 
                     if (!DecisionMoveBySearchListForFindAttackMovePath((PlatoonMoveDirection)idx, offsetX, offsetY))
                     {
-                        closeCount++;
                         continue;
                     }
                 }
@@ -2498,53 +2513,72 @@ public class Platoon : MonoBehaviour
                 {
                     if (!DecisionMoveBySearchListForMovePath((PlatoonMoveDirection)idx, offsetX, offsetY))
                     {
-                        closeCount++;
                         continue;
                     }
                 }
 
-                Tile moveTile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(startTile.idxX + offsetX, startTile.idxY + offsetY));
+                Tile tempTile = DecisionTileByDirection((PlatoonMoveDirection)idx, mainGame.GetTileByIdx(startTile.idxX + offsetX, startTile.idxY + offsetY));
 
-                if (moveTile == null)
-                {
-                    closeCount++;
-                    continue;
-                }
+                if (tempTile == null) continue;
 
-                if ((PlatoonMoveDirection)idx == direction)
-                {
-                    tempTile = moveTile;
-                }
-
-                if (moveTile == target)
-                {
-                    finishJPS = true;
-                    return;
-                }
-            }
-
-            if (closeCount >= 3)
-            {
-                // 데드 엔드 (갈곳이 없는 막힌 곳)
-                return;
-            }
-            else if (closeCount > 0)
-            {
-                // 이곳이 점프 포인트가 됩니다.
                 JPS_Struct node = new JPS_Struct();
                 node.pTile = current;
-                node.g = Vector3.Distance(new Vector3(tempTile.idxX, tempTile.idxY), new Vector3(current.idxX, current.idxY));
+                node.g = Vector3.Distance(new Vector3(tempTile.idxX, tempTile.idxY), new Vector3(startTile.idxX, startTile.idxY));
                 node.h = Vector3.Distance(new Vector3(target.idxX, target.idxY), new Vector3(tempTile.idxX, tempTile.idxY));
                 node.f = node.g + node.h;
                 node.tile = tempTile;
-                openList.Add(node);
-                return;
+                node.direciton = (PlatoonMoveDirection)idx;
+
+                checkList.Add(node);
             }
-            else
+
+            if (checkList.Count >= 3) // 전부 뚫려있는 경우이므로 해당 방향으로 계속 나아갑니다.
             {
-                // 길이 전부 열려있어서 계속 서치합니다.
-                offsetX = tempTile.idxX - current.idxX;
-                offsetY = tempTile.idxY - current.idxY;
+                currentTile = DecisionTileByDirection(direction, mainGame.GetTileByIdx(startTile.idxX + offsetX, startTile.idxY + offsetY));
+
+                if (openDic.ContainsKey(currentTile)) return;
+
+                offsetX = currentTile.idxX - startTile.idxX;
+                offsetY = currentTile.idxY - startTile.idxY;
+            }
+            else if (checkList.Count == 2) // 점프 포인트를 찾은 경우입니다. (복수이기 때문에 둘을 비교해 봅니다.)
+            {
+                Tile jumpTile = null;
+                if (checkList[0].f <= checkList[1].f)
+                {
+                    jumpTile = checkList[0].tile;
+
+                    if (jumpTile == startTile) return;
+                    if (openDic.ContainsKey(jumpTile)) return;
+                    if (closeDic.ContainsKey(jumpTile)) return;
+
+                    openDic.Add(jumpTile, checkList[0]);
+                }
+                else
+                {
+                    jumpTile = checkList[1].tile;
+
+                    if (jumpTile == startTile) return;
+                    if (openDic.ContainsKey(jumpTile)) return;
+                    if (closeDic.ContainsKey(jumpTile)) return;
+
+                    openDic.Add(jumpTile, checkList[1]);
+                }
+            }
+            else if (checkList.Count == 1) // 점프 포인트를 한개 찾은 경우입니다.
+            {
+                Tile jumpTile = checkList[0].tile;
+
+                if (jumpTile == startTile) return;
+                if (openDic.ContainsKey(jumpTile)) return;
+                if (closeDic.ContainsKey(jumpTile)) return;
+
+                openDic.Add(jumpTile, checkList[0]);
+            }
+            else // 데드 엔드 (갈곳이 없는 막힌 곳)
+            {
+                Debug.Log("JPS 데드 엔드!!!!!!!!!!!!!!!");
+                return;
             }
         }
     }
